@@ -79,27 +79,33 @@
             const pointPos = new kakao.maps.LatLng(lat, lng);
 
             if (type === 'sampling') {
-              const id = feature.properties?.sample_id || '시료';
+              const id = feature.properties?.name;
               const photo = feature.properties?.photo_url;
 
+              // ✅ 마커 생성
               const marker = new kakao.maps.Marker({ position: pointPos });
               marker.setMap(map);
 
-              const label = new kakao.maps.CustomOverlay({
-                position: pointPos,
-                content: `<div style="background:white;border:1px solid #888;padding:2px 5px;border-radius:4px;font-size:12px;">${id}</div>`,
-                yAnchor: 1
-              });
-              label.setMap(map);
+              // ✅ 라벨 중복 없이 한 번만 생성
+              if (id) {
+                const label = new kakao.maps.CustomOverlay({
+                  position: pointPos,
+                  content: `<div style="background:white;border:1px solid #888;padding:2px 5px;border-radius:4px;font-size:12px;">${id}</div>`,
+                  yAnchor: 1
+                });
+                label.setMap(map);
+              }
 
+              // ✅ 사진이 있을 경우 InfoWindow 연결
               if (photo) {
                 const infowindow = new kakao.maps.InfoWindow({
-                  content: `<div style="padding:5px;"><strong>${id}</strong><br><img src="${photo}" width="200"/></div>`
+                  content: `<div style="padding:5px;"><strong>${id || ''}</strong><br><img src="${photo}" width="200"/></div>`
                 });
                 kakao.maps.event.addListener(marker, 'click', function () {
                   infowindow.open(map, marker);
                 });
               }
+
             } else {
               new kakao.maps.Marker({ position: pointPos }).setMap(map);
             }
@@ -146,4 +152,3 @@
   </script>
 </body>
 </html>
-
