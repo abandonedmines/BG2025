@@ -20,23 +20,22 @@
         mapTypeId: kakao.maps.MapTypeId.HYBRID
       });
 
-      // ✅ GeoJSON 자동 로딩
-      fetch('samplingresult_1st.geojson')
-        .then(res => res.json())
-        .then(geojson => {
-          console.log('✅ 자동 로딩된 GeoJSON:', geojson);
-          drawGeoJSON(geojson);
-        })
-        .catch(err => console.error('❌ GeoJSON 로드 실패:', err));
+  // ✅ GeoJSON 파일 배열
+  const geojsonFiles = [
+    'samplingresult_1st.geojson',
+    'BG_boundary.geojson'
+  ];
 
-       // ✅ GeoJSON 자동 로딩
-      fetch('BG_boundary.geojson')
-        .then(res => res.json())
-        .then(geojson => {
-          console.log('✅ 자동 로딩된 GeoJSON:', geojson);
-          drawGeoJSON(geojson);
-        })
-        .catch(err => console.error('❌ GeoJSON 로드 실패:', err));
+  // ✅ 각 파일을 fetch하여 drawGeoJSON으로 표시
+  geojsonFiles.forEach(file => {
+    fetch(file)
+      .then(res => res.json())
+      .then(data => {
+        console.log(`✅ ${file} 로드 완료`);
+        drawGeoJSON(data);
+      })
+      .catch(err => console.error(`❌ ${file} 로드 실패:`, err));
+  });
      
       // ✅ drawGeoJSON 함수 정의
       function drawGeoJSON(geojson) {
