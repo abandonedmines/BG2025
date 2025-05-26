@@ -30,7 +30,7 @@
         .catch(err => console.error('❌ GeoJSON 로드 실패:', err));
 
        // ✅ GeoJSON 자동 로딩
-      fetch('BG_boundadry.geojson')
+      fetch('BG_boundary.geojson')
         .then(res => res.json())
         .then(geojson => {
           console.log('✅ 자동 로딩된 GeoJSON:', geojson);
