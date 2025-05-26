@@ -20,64 +20,130 @@
         mapTypeId: kakao.maps.MapTypeId.HYBRID
       });
 
-  // ✅ GeoJSON 파일 배열
-  const geojsonFiles = [
-    'samplingresult_1st.geojson',
-    'BG_boundary.geojson'
-  ];
+      // ✅ GeoJSON 파일 배열
+      const geojsonFiles = [
+        { file: 'samplingresult_1st.geojson', layerType: 'sampling' },
+        { file: 'BG_boundary.geojson', layerType: 'boundary' }
+      ];
 
-  // ✅ 각 파일을 fetch하여 drawGeoJSON으로 표시
-  geojsonFiles.forEach(file => {
-    fetch(file)
-      .then(res => res.json())
-      .then(data => {
-        console.log(`✅ ${file} 로드 완료`);
-        drawGeoJSON(data);
-      })
-      .catch(err => console.error(`❌ ${file} 로드 실패:`, err));
-  });
-     
-      // ✅ drawGeoJSON 함수 정의
-      function drawGeoJSON(geojson) {
+      // ✅ 각 파일 fetch 후 스타일 적용
+      geojsonFiles.forEach(({ file, layerType }) => {
+        fetch(file)
+          .then(res => res.json())
+          .then(data => {
+            console.log(`✅ ${file} 로드 완료`);
+            drawGeoJSON(data, layerType);
+          })
+          .catch(err => console.error(`❌ ${file} 로드 실패:`, err));
+      });
+
+      // ✅ GeoJSON 시각화 함수
+      function drawGeoJSON(geojson, type = 'default') {
         geojson.features.forEach(feature => {
-          const type = feature.geometry.type;
+          const geomType = feature.geometry.type;
           const coords = feature.geometry.coordinates;
 
-          if (type === 'Polygon' || type === 'MultiPolygon') {
-            const polygons = type === 'Polygon' ? [coords] : coords;
+          if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
+            const polygons = geomType === 'Polygon' ? [coords] : coords;
             polygons.forEach(polygon => {
               polygon.forEach(ring => {
                 const path = ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
+                const style = getPolygonStyle(type);
+
                 new kakao.maps.Polygon({
-                  path,
-                  strokeWeight: 2,
-                  strokeColor: '#FF0000',
-                  fillColor: 'rgba(255,0,0,0.4)',
-                  fillOpacity: 0.6
+                  path: path,
+                  strokeWeight: style.strokeWeight,
+                  strokeColor: style.strokeColor,
+                  strokeStyle: style.strokeStyle,
+                  fillColor: style.fillColor,
+                  fillOpacity: style.fillOpacity
                 }).setMap(map);
               });
             });
           }
 
-          if (type === 'LineString') {
+          if (geomType === 'LineString') {
             const path = coords.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
+            const style = getLineStyle(type);
+
             new kakao.maps.Polyline({
-              path,
-              strokeWeight: 3,
-              strokeColor: '#0000FF',
-              strokeOpacity: 0.7
+              path: path,
+              strokeWeight: style.strokeWeight,
+              strokeColor: style.strokeColor,
+              strokeOpacity: style.strokeOpacity
             }).setMap(map);
           }
 
-          if (type === 'Point') {
+          if (geomType === 'Point') {
             const [lng, lat] = coords;
-            new kakao.maps.Marker({
-              position: new kakao.maps.LatLng(lat, lng)
-            }).setMap(map);
+            const pointPos = new kakao.maps.LatLng(lat, lng);
+
+            if (type === 'sampling') {
+              const id = feature.properties?.sample_id || '시료';
+              const photo = feature.properties?.photo_url;
+
+              const marker = new kakao.maps.Marker({ position: pointPos });
+              marker.setMap(map);
+
+              const label = new kakao.maps.CustomOverlay({
+                position: pointPos,
+                content: `<div style="background:white;border:1px solid #888;padding:2px 5px;border-radius:4px;font-size:12px;">${id}</div>`,
+                yAnchor: 1
+              });
+              label.setMap(map);
+
+              if (photo) {
+                const infowindow = new kakao.maps.InfoWindow({
+                  content: `<div style="padding:5px;"><strong>${id}</strong><br><img src="${photo}" width="200"/></div>`
+                });
+                kakao.maps.event.addListener(marker, 'click', function () {
+                  infowindow.open(map, marker);
+                });
+              }
+            } else {
+              new kakao.maps.Marker({ position: pointPos }).setMap(map);
+            }
           }
         });
+      }
+
+      // ✅ Polygon 스타일 함수
+      function getPolygonStyle(type) {
+        if (type === 'boundary') {
+          return {
+            strokeWeight: 2,
+            strokeColor: '#FFFF00',
+            strokeStyle: 'dash',
+            fillColor: 'rgba(0,0,0,0)',
+            fillOpacity: 0
+          };
+        }
+        return {
+          strokeWeight: 2,
+          strokeColor: '#333',
+          strokeStyle: 'solid',
+          fillColor: '#cccccc',
+          fillOpacity: 0.3
+        };
+      }
+
+      // ✅ Line 스타일 함수
+      function getLineStyle(type) {
+        if (type === 'river') {
+          return {
+            strokeWeight: 2,
+            strokeColor: '#0000FF',
+            strokeOpacity: 0.8
+          };
+        }
+        return {
+          strokeWeight: 2,
+          strokeColor: '#444',
+          strokeOpacity: 0.5
+        };
       }
     });
   </script>
 </body>
 </html>
+
