@@ -91,7 +91,8 @@
                 const label = new kakao.maps.CustomOverlay({
                   position: pointPos,
                   content: `<div style="background:white;border:1px solid #888;padding:2px 5px;border-radius:4px;font-size:12px;">${id}</div>`,
-                  margin-left: 10px
+                  margin-bottom,
+                  yAnchor: 1
                 });
                 label.setMap(map);
               }
