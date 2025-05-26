@@ -20,13 +20,11 @@
         mapTypeId: kakao.maps.MapTypeId.HYBRID
       });
 
-      // ✅ GeoJSON 파일 배열
       const geojsonFiles = [
         { file: 'samplingresult_1st.geojson', layerType: 'sampling' },
         { file: 'BG_boundary.geojson', layerType: 'boundary' }
       ];
 
-      // ✅ 각 파일 fetch 후 스타일 적용
       geojsonFiles.forEach(({ file, layerType }) => {
         fetch(file)
           .then(res => res.json())
@@ -37,7 +35,8 @@
           .catch(err => console.error(`❌ ${file} 로드 실패:`, err));
       });
 
-      // ✅ GeoJSON 시각화 함수
+      let openInfoWindow = null; // ✅ InfoWindow 추적 변수
+
       function drawGeoJSON(geojson, type = 'default') {
         geojson.features.forEach(feature => {
           const geomType = feature.geometry.type;
@@ -82,11 +81,9 @@
               const id = feature.properties?.name;
               const photo = feature.properties?.photo_url;
 
-              // ✅ 마커 생성
               const marker = new kakao.maps.Marker({ position: pointPos });
               marker.setMap(map);
 
-              // ✅ 오른쪽 위에 라벨 생성
               if (id) {
                 const label = new kakao.maps.CustomOverlay({
                   position: pointPos,
@@ -98,6 +95,7 @@
                       border-radius:4px;
                       font-size:12px;
                       transform: translate(10px, -30px);
+                      pointer-events: none;
                     ">
                       ${id}
                     </div>`,
@@ -107,25 +105,34 @@
                 label.setMap(map);
               }
 
-              // ✅ 사진이 있을 경우 InfoWindow 연결
               if (photo) {
                 const infowindow = new kakao.maps.InfoWindow({
                   content: `<div style="padding:5px;"><strong>${id || ''}</strong><br><img src="${photo}" width="200"/></div>`
                 });
+
                 kakao.maps.event.addListener(marker, 'click', function () {
+                  if (openInfoWindow) {
+                    openInfoWindow.close();
+                  }
                   infowindow.open(map, marker);
+                  openInfoWindow = infowindow;
                 });
               }
-
             } else {
-              // ✅ 기타 Point 처리 (일반 마커만)
               new kakao.maps.Marker({ position: pointPos }).setMap(map);
             }
           }
         });
       }
 
-      // ✅ Polygon 스타일 함수
+      // ✅ 지도 클릭 시 열린 InfoWindow 닫기
+      kakao.maps.event.addListener(map, 'click', function () {
+        if (openInfoWindow) {
+          openInfoWindow.close();
+          openInfoWindow = null;
+        }
+      });
+
       function getPolygonStyle(type) {
         if (type === 'boundary') {
           return {
@@ -145,7 +152,6 @@
         };
       }
 
-      // ✅ Line 스타일 함수
       function getLineStyle(type) {
         if (type === 'river') {
           return {
