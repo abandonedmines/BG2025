@@ -79,7 +79,7 @@
             const pointPos = new kakao.maps.LatLng(lat, lng);
 
             if (type === 'sampling') {
-              const id = feature.properties?.sample_id ||;
+              const id = feature.properties?.sample_id || '시료';
               const photo = feature.properties?.photo_url;
 
               const marker = new kakao.maps.Marker({ position: pointPos });
