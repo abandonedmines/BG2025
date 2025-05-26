@@ -86,12 +86,22 @@
               const marker = new kakao.maps.Marker({ position: pointPos });
               marker.setMap(map);
 
-              // ✅ 라벨 중복 없이 한 번만 생성
+              // ✅ 오른쪽 위에 라벨 생성
               if (id) {
                 const label = new kakao.maps.CustomOverlay({
                   position: pointPos,
-                  content: `<div style="background:white;border:1px solid #888;padding:2px 5px;border-radius:4px;font-size:12px;">${id}</div>`,
-                  margin-bottom,
+                  content: `
+                    <div style="
+                      background:white;
+                      border:1px solid #888;
+                      padding:2px 5px;
+                      border-radius:4px;
+                      font-size:12px;
+                      transform: translate(10px, -30px);
+                    ">
+                      ${id}
+                    </div>`,
+                  xAnchor: 0,
                   yAnchor: 1
                 });
                 label.setMap(map);
@@ -108,6 +118,7 @@
               }
 
             } else {
+              // ✅ 기타 Point 처리 (일반 마커만)
               new kakao.maps.Marker({ position: pointPos }).setMap(map);
             }
           }
