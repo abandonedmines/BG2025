@@ -29,6 +29,15 @@
         })
         .catch(err => console.error('❌ GeoJSON 로드 실패:', err));
 
+       // ✅ GeoJSON 자동 로딩
+      fetch('BG_boundadry.geojson')
+        .then(res => res.json())
+        .then(geojson => {
+          console.log('✅ 자동 로딩된 GeoJSON:', geojson);
+          drawGeoJSON(geojson);
+        })
+        .catch(err => console.error('❌ GeoJSON 로드 실패:', err));
+     
       // ✅ drawGeoJSON 함수 정의
       function drawGeoJSON(geojson) {
         geojson.features.forEach(feature => {
