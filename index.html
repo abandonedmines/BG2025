@@ -23,6 +23,7 @@
       const geojsonFiles = [
         { file: 'samplingresult_1st.geojson', layerType: 'sampling' },
         { file: 'BG_boundary.geojson', layerType: 'boundary' }
+        { file: 'BG_mainflowline.geojson', layerType: 'mainflow' }
       ];
 
       geojsonFiles.forEach(({ file, layerType }) => {
@@ -155,9 +156,9 @@
       }
 
       function getLineStyle(type) {
-        if (type === 'river') {
+        if (type === 'mainflow') {
           return {
-            strokeWeight: 2,
+            strokeWeight: 3,
             strokeColor: '#0000FF',
             strokeOpacity: 0.8
           };
