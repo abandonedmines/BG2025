@@ -74,6 +74,22 @@
             }).setMap(map);
           }
 
+          if (geomType === 'MultiLineString') {
+          coords.forEach(line => {
+            const path = line.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
+            const style = getLineStyle(type);
+
+            new kakao.maps.Polyline({
+              path: path,
+              strokeWeight: style.strokeWeight,
+              strokeColor: style.strokeColor,
+              strokeOpacity: style.strokeOpacity
+            }).setMap(map);
+          });
+        }
+
+
+          
           if (geomType === 'Point') {
             const [lng, lat] = coords;
             const pointPos = new kakao.maps.LatLng(lat, lng);
