@@ -1,24 +1,244 @@
-if (Array.isArray(photo_urls) && photo_urls.length > 0) {
-  const images = photo_urls.map((url, i) =>
-    `<img src="${url}" class="${i === 0 ? 'active' : ''}" style="height: 600px; object-fit: contain;" />`
-  ).join('');
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>GeoJSON 자동 로딩 지도</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; }
+    #map { width: 100%; height: 100vh; }
 
-  const sliderContent = `
-    <div style="padding:5px;max-width:420px;overflow:hidden;">
-      <strong>${id || ''}</strong><br>
-      <div class="slider-wrapper">
-        ${images}
-        <button class="slider-button left" onclick="prevSlide(this)">←</button>
-        <button class="slider-button right" onclick="nextSlide(this)">→</button>
-      </div>
-    </div>
-  `;
+    .slider-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      overflow: hidden;
+      text-align: center;
+    }
 
-  const infowindow = new kakao.maps.InfoWindow({ content: sliderContent });
+    .slider-wrapper img {
+      width: 100%;
+      max-height: 400px;
+      display: none;
+      object-fit: contain;
+    }
 
-  kakao.maps.event.addListener(marker, 'click', function () {
-    if (openInfoWindow) openInfoWindow.close();
-    infowindow.open(map, marker);
-    openInfoWindow = infowindow;
-  });
-}
+    .slider-wrapper img.active {
+      display: block;
+    }
+
+    .slider-button {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      font-size: 18px;
+      z-index: 10;
+    }
+
+    .slider-button.left {
+      left: 5px;
+    }
+
+    .slider-button.right {
+      right: 5px;
+    }
+  </style>
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=여기에_카카오_앱키를_입력하세요&autoload=false"></script>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script>
+    kakao.maps.load(function () {
+      const map = new kakao.maps.Map(document.getElementById('map'), {
+        center: new kakao.maps.LatLng(36.460980, 127.615083),
+        level: 4,
+        mapTypeId: kakao.maps.MapTypeId.HYBRID
+      });
+
+      const geojsonFiles = [
+        { file: 'samplingresult_1st.geojson', layerType: 'sampling' },
+        { file: 'BG_boundary.geojson', layerType: 'boundary' },
+        { file: 'BG_mainflowline.geojson', layerType: 'mainflow' }
+      ];
+
+      geojsonFiles.forEach(({ file, layerType }) => {
+        fetch(file)
+          .then(res => res.json())
+          .then(data => drawGeoJSON(data, layerType))
+          .catch(err => console.error(`❌ ${file} 로드 실패:`, err));
+      });
+
+      let openInfoWindow = null;
+
+      function drawGeoJSON(geojson, type = 'default') {
+        geojson.features.forEach(feature => {
+          const geomType = feature.geometry.type;
+          const coords = feature.geometry.coordinates;
+
+          if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
+            const polygons = geomType === 'Polygon' ? [coords] : coords;
+            polygons.forEach(polygon => {
+              polygon.forEach(ring => {
+                const path = ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
+                const style = getPolygonStyle(type);
+
+                new kakao.maps.Polygon({
+                  path,
+                  strokeWeight: style.strokeWeight,
+                  strokeColor: style.strokeColor,
+                  strokeStyle: style.strokeStyle,
+                  fillColor: style.fillColor,
+                  fillOpacity: style.fillOpacity
+                }).setMap(map);
+              });
+            });
+          }
+
+          if (geomType === 'LineString' || geomType === 'MultiLineString') {
+            const lines = geomType === 'LineString' ? [coords] : coords;
+            lines.forEach(line => {
+              const path = line.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
+              const style = getLineStyle(type);
+
+              new kakao.maps.Polyline({
+                path,
+                strokeWeight: style.strokeWeight,
+                strokeColor: style.strokeColor,
+                strokeOpacity: style.strokeOpacity
+              }).setMap(map);
+            });
+          }
+
+          if (geomType === 'Point') {
+            const [lng, lat] = coords;
+            const pointPos = new kakao.maps.LatLng(lat, lng);
+
+            if (type === 'sampling') {
+              const id = feature.properties?.name;
+              const photo_urls = feature.properties?.photo_urls;
+
+              const marker = new kakao.maps.Marker({ position: pointPos });
+              marker.setMap(map);
+
+              if (id) {
+                const label = new kakao.maps.CustomOverlay({
+                  position: pointPos,
+                  content: `
+                    <div style="
+                      background:white;
+                      border:2px solid #888;
+                      padding:4px 8px;
+                      border-radius:6px;
+                      font-size:16px;
+                      font-weight: bold;
+                      transform: translate(10px, -35px);
+                      pointer-events: none;
+                      box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
+                    ">
+                      ${id}
+                    </div>`,
+                  xAnchor: 0,
+                  yAnchor: 1
+                });
+                label.setMap(map);
+              }
+
+              if (Array.isArray(photo_urls) && photo_urls.length > 0) {
+                const images = photo_urls.map((url, i) =>
+                  `<img src="${url}" class="${i === 0 ? 'active' : ''}" />`
+                ).join('');
+
+                const sliderContent = `
+                  <div style="padding:5px;max-width:420px;">
+                    <strong>${id || ''}</strong><br>
+                    <div class="slider-wrapper">
+                      ${images}
+                      <button class="slider-button left" onclick="prevSlide(this)">←</button>
+                      <button class="slider-button right" onclick="nextSlide(this)">→</button>
+                    </div>
+                  </div>
+                `;
+
+                const infowindow = new kakao.maps.InfoWindow({ content: sliderContent });
+
+                kakao.maps.event.addListener(marker, 'click', function () {
+                  if (openInfoWindow) openInfoWindow.close();
+                  infowindow.open(map, marker);
+                  openInfoWindow = infowindow;
+                });
+              }
+            } else {
+              new kakao.maps.Marker({ position: pointPos }).setMap(map);
+            }
+          }
+        });
+      }
+
+      kakao.maps.event.addListener(map, 'click', function () {
+        if (openInfoWindow) {
+          openInfoWindow.close();
+          openInfoWindow = null;
+        }
+      });
+
+      function getPolygonStyle(type) {
+        if (type === 'boundary') {
+          return {
+            strokeWeight: 2.5,
+            strokeColor: '#FFFF00',
+            strokeStyle: 'dash',
+            fillColor: 'rgba(0,0,0,0)',
+            fillOpacity: 0
+          };
+        }
+        return {
+          strokeWeight: 2,
+          strokeColor: '#333',
+          strokeStyle: 'solid',
+          fillColor: '#cccccc',
+          fillOpacity: 0.3
+        };
+      }
+
+      function getLineStyle(type) {
+        if (type === 'mainflow') {
+          return {
+            strokeWeight: 2,
+            strokeColor: '#fc0390',
+            strokeOpacity: 0.8
+          };
+        }
+        return {
+          strokeWeight: 2,
+          strokeColor: '#444',
+          strokeOpacity: 0.5
+        };
+      }
+
+      // 슬라이드 제어 함수
+      window.nextSlide = function (button) {
+        const wrapper = button.parentElement;
+        const imgs = wrapper.querySelectorAll('img');
+        let current = Array.from(imgs).findIndex(img => img.classList.contains('active'));
+        imgs[current].classList.remove('active');
+        const next = (current + 1) % imgs.length;
+        imgs[next].classList.add('active');
+      };
+
+      window.prevSlide = function (button) {
+        const wrapper = button.parentElement;
+        const imgs = wrapper.querySelectorAll('img');
+        let current = Array.from(imgs).findIndex(img => img.classList.contains('active'));
+        imgs[current].classList.remove('active');
+        const prev = (current - 1 + imgs.length) % imgs.length;
+        imgs[prev].classList.add('active');
+      };
+    });
+  </script>
+</body>
+</html>
