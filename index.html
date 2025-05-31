@@ -141,7 +141,7 @@
 
               if (Array.isArray(photo_urls) && photo_urls.length > 0) {
                 const images = photo_urls.map((url, i) =>
-                  `<img src="${url}" class="${i === 0 ? 'active' : ''}" />`).join('');
+                  `<img src="${url}" class="${i === 0 ? 'active' : ''}" style="height: 600px; object-fit: contain;" />
 
                 const sliderContent = `
                   <div style="padding:5px;max-width:420px;">
