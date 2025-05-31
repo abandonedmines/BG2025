@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>GeoJSON 자동 로딩 지도</title>
+  <title>GeoJSON 자동 로딩 지도 + GPS</title>
   <style>
     html, body { margin: 0; padding: 0; height: 100%; }
     #map { width: 100%; height: 100vh; }
@@ -42,30 +42,39 @@
     .slider-button.left { left: 5px; }
     .slider-button.right { right: 5px; }
 
-    .gps-button {
+    #gps-toggle {
       position: absolute;
       bottom: 20px;
       right: 20px;
-      background: #007bff;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 5px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background-color: white;
+      border: 1px solid #ccc;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
-      z-index: 999;
+      z-index: 1000;
+    }
+
+    #gps-toggle img {
+      width: 24px;
+      height: 24px;
     }
   </style>
-
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9e36db09e57011893c10d8a46f344a7f&autoload=false"></script>
 </head>
 <body>
   <div id="map"></div>
-  <button class="gps-button" onclick="locateUser()">내 위치 찾기</button>
+  <button id="gps-toggle" title="내 위치 버튼">
+    <img src="https://cdn-icons-png.flaticon.com/512/684/684908.png" alt="GPS Icon" />
+  </button>
 
   <script>
-    let map;
     kakao.maps.load(function () {
-      map = new kakao.maps.Map(document.getElementById('map'), {
+      const map = new kakao.maps.Map(document.getElementById('map'), {
         center: new kakao.maps.LatLng(36.460980, 127.615083),
         level: 4,
         mapTypeId: kakao.maps.MapTypeId.HYBRID
@@ -85,6 +94,8 @@
       });
 
       let openInfoWindow = null;
+      let gpsMarker = null;
+      let gpsWatchId = null;
 
       function drawGeoJSON(geojson, type = 'default') {
         geojson.features.forEach(feature => {
@@ -138,20 +149,7 @@
               if (id) {
                 const label = new kakao.maps.CustomOverlay({
                   position: pointPos,
-                  content: `
-                    <div style="
-                      background:white;
-                      border:2px solid #888;
-                      padding:4px 8px;
-                      border-radius:6px;
-                      font-size:16px;
-                      font-weight: bold;
-                      transform: translate(10px, -35px);
-                      pointer-events: none;
-                      box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
-                    ">
-                      ${id}
-                    </div>`,
+                  content: `<div style="background:white;border:2px solid #888;padding:4px 8px;border-radius:6px;font-size:16px;font-weight: bold;transform: translate(10px, -35px);pointer-events: none;box-shadow: 2px 2px 6px rgba(0,0,0,0.2);">${id}</div>`,
                   xAnchor: 0,
                   yAnchor: 1
                 });
@@ -174,7 +172,6 @@
                 `;
 
                 const infowindow = new kakao.maps.InfoWindow({ content: sliderContent });
-
                 kakao.maps.event.addListener(marker, 'click', function () {
                   if (openInfoWindow) openInfoWindow.close();
                   infowindow.open(map, marker);
@@ -229,6 +226,7 @@
         };
       }
 
+      // 슬라이드 제어 함수
       window.nextSlide = function (button) {
         const wrapper = button.parentElement;
         const imgs = wrapper.querySelectorAll('img');
@@ -246,34 +244,40 @@
         const prev = (current - 1 + imgs.length) % imgs.length;
         imgs[prev].classList.add('active');
       };
-    });
 
-    function isMobileDevice() {
-      return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    }
+      // GPS 버튼 클릭
+      document.getElementById('gps-toggle').addEventListener('click', function () {
+        if (gpsWatchId) {
+          navigator.geolocation.clearWatch(gpsWatchId);
+          if (gpsMarker) gpsMarker.setMap(null);
+          gpsWatchId = null;
+          gpsMarker = null;
+        } else {
+          if (navigator.geolocation) {
+            gpsWatchId = navigator.geolocation.watchPosition(position => {
+              const latlng = new kakao.maps.LatLng(position.coords.latitude, position.coords.longitude);
 
-    function locateUser() {
-      if (!isMobileDevice()) {
-        alert('이 기능은 모바일에서만 작동합니다.');
-        return;
-      }
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          function (position) {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            const userPosition = new kakao.maps.LatLng(lat, lng);
-            map.setCenter(userPosition);
-            map.setLevel(3);
-          },
-          function (error) {
-            alert('위치 정보를 가져올 수 없습니다.');
+              if (!gpsMarker) {
+                gpsMarker = new kakao.maps.Marker({
+                  position: latlng,
+                  map: map,
+                  image: new kakao.maps.MarkerImage(
+                    'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png',
+                    new kakao.maps.Size(24, 35)
+                  )
+                });
+              } else {
+                gpsMarker.setPosition(latlng);
+              }
+
+              map.panTo(latlng);
+            });
+          } else {
+            alert('이 브라우저에서는 GPS를 지원하지 않습니다.');
           }
-        );
-      } else {
-        alert('이 브라우저에서는 위치 정보를 지원하지 않습니다.');
-      }
-    }
+        }
+      });
+    });
   </script>
 </body>
 </html>
