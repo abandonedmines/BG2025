@@ -41,12 +41,26 @@
 
     .slider-button.left { left: 5px; }
     .slider-button.right { right: 5px; }
+
+    #gpsBtn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 10;
+      background-color: white;
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+    }
   </style>
 
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9e36db09e57011893c10d8a46f344a7f&autoload=false"></script>
 </head>
 <body>
   <div id="map"></div>
+  <button id="gpsBtn">📍 현재 위치</button>
 
   <script>
     kakao.maps.load(function () {
@@ -214,7 +228,6 @@
         };
       }
 
-      // 슬라이드 제어 함수
       window.nextSlide = function (button) {
         const wrapper = button.parentElement;
         const imgs = wrapper.querySelectorAll('img');
@@ -232,6 +245,33 @@
         const prev = (current - 1 + imgs.length) % imgs.length;
         imgs[prev].classList.add('active');
       };
+
+      // GPS 버튼 기능
+      document.getElementById('gpsBtn').addEventListener('click', function () {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function (position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const userPosition = new kakao.maps.LatLng(lat, lng);
+
+            const marker = new kakao.maps.Marker({
+              position: userPosition,
+              map: map
+            });
+
+            map.setCenter(userPosition);
+
+            const infowindow = new kakao.maps.InfoWindow({
+              content: '<div style="padding:5px;font-size:13px;">📍 현재 위치</div>'
+            });
+            infowindow.open(map, marker);
+          }, function () {
+            alert("위치 정보를 가져올 수 없습니다.");
+          });
+        } else {
+          alert("이 브라우저는 GPS를 지원하지 않습니다.");
+        }
+      });
     });
   </script>
 </body>
