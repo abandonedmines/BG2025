@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
   <meta charset="utf-8">
-  <title>GeoJSON 자동 로딩 지도</title>
+  <title>202년 부국광산 시료채취</title>
   <style>
     html, body { margin: 0; padding: 0; height: 100%; }
-    #map { width: 100%; height: 100vh; }
+    #map { width: 100%; height: 100vh; position: relative; }
     .slider-wrapper {
       position: relative;
       width: 100%;
@@ -36,40 +36,45 @@
     }
     .slider-button.left { left: 5px; }
     .slider-button.right { right: 5px; }
-    
     .gps-button {
       position: absolute;
-      top: 10px;
-      left: 10px;
-      width: 36px;
-      height: 36px;
-      background: white url('https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/target.png') no-repeat center;
-      background-size: 24px 24px;
-      border-radius: 18px;
+      bottom: 20px;
+      right: 20px;
+      background: white;
       border: 1px solid #ccc;
+      border-radius: 50%;
+      width: 42px;
+      height: 42px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      background-image: url('https://cdn-icons-png.flaticon.com/512/64/64113.png');
+      background-size: 60% 60%;
+      background-repeat: no-repeat;
+      background-position: center;
       cursor: pointer;
-      z-index: 10;
+      z-index: 100;
     }
-
-    .gps-loader {
+    .gps-loading::after {
+      content: '';
       position: absolute;
-      top: 60px;
-      left: 10px;
-      padding: 4px 10px;
-      background: rgba(255, 255, 255, 0.9);
-      border-radius: 4px;
-      font-size: 14px;
-      display: none;
-      z-index: 10;
+      width: 24px;
+      height: 24px;
+      border: 3px solid #ccc;
+      border-top: 3px solid #333;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      top: 9px;
+      left: 9px;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
   </style>
-
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9e36db09e57011893c10d8a46f344a7f&autoload=false"></script>
 </head>
 <body>
   <div id="map"></div>
-  <div class="gps-button" id="gpsToggleBtn" title="내 위치 켜기"></div>
-  <div class="gps-loader" id="gpsLoader">위치 찾는 중...</div>
+  <div class="gps-button" id="gpsToggleBtn" title="내 위치"></div>
 
   <script>
     kakao.maps.load(function () {
@@ -105,7 +110,6 @@
               polygon.forEach(ring => {
                 const path = ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
                 const style = getPolygonStyle(type);
-
                 new kakao.maps.Polygon({
                   path,
                   strokeWeight: style.strokeWeight,
@@ -123,7 +127,6 @@
             lines.forEach(line => {
               const path = line.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
               const style = getLineStyle(type);
-
               new kakao.maps.Polyline({
                 path,
                 strokeWeight: style.strokeWeight,
@@ -136,7 +139,6 @@
           if (geomType === 'Point') {
             const [lng, lat] = coords;
             const pointPos = new kakao.maps.LatLng(lat, lng);
-
             if (type === 'sampling') {
               const id = feature.properties?.name;
               const photo_urls = feature.properties?.photo_urls;
@@ -146,20 +148,7 @@
               if (id) {
                 const label = new kakao.maps.CustomOverlay({
                   position: pointPos,
-                  content: `
-                    <div style="
-                      background:white;
-                      border:2px solid #888;
-                      padding:4px 8px;
-                      border-radius:6px;
-                      font-size:16px;
-                      font-weight: bold;
-                      transform: translate(10px, -35px);
-                      pointer-events: none;
-                      box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
-                    ">
-                      ${id}
-                    </div>`,
+                  content: `<div style="background:white;border:2px solid #888;padding:4px 8px;border-radius:6px;font-size:16px;font-weight: bold;transform: translate(10px, -35px);pointer-events: none;box-shadow: 2px 2px 6px rgba(0,0,0,0.2);">${id}</div>`,
                   xAnchor: 0,
                   yAnchor: 1
                 });
@@ -169,7 +158,6 @@
               if (Array.isArray(photo_urls) && photo_urls.length > 0) {
                 const images = photo_urls.map((url, i) =>
                   `<img src="${url}" class="${i === 0 ? 'active' : ''}" />`).join('');
-
                 const sliderContent = `
                   <div style="padding:5px;max-width:420px;">
                     <strong>${id || ''}</strong><br>
@@ -178,11 +166,8 @@
                       <button class="slider-button left" onclick="prevSlide(this)">←</button>
                       <button class="slider-button right" onclick="nextSlide(this)">→</button>
                     </div>
-                  </div>
-                `;
-
+                  </div>`;
                 const infowindow = new kakao.maps.InfoWindow({ content: sliderContent });
-
                 kakao.maps.event.addListener(marker, 'click', function () {
                   if (openInfoWindow) openInfoWindow.close();
                   infowindow.open(map, marker);
@@ -204,104 +189,69 @@
       });
 
       function getPolygonStyle(type) {
-        if (type === 'boundary') {
-          return {
-            strokeWeight: 2.5,
-            strokeColor: '#FFFF00',
-            strokeStyle: 'dash',
-            fillColor: 'rgba(0,0,0,0)',
-            fillOpacity: 0
-          };
-        }
-        return {
-          strokeWeight: 2,
-          strokeColor: '#333',
-          strokeStyle: 'solid',
-          fillColor: '#cccccc',
-          fillOpacity: 0.3
-        };
+        return type === 'boundary'
+          ? { strokeWeight: 2.5, strokeColor: '#FFFF00', strokeStyle: 'dash', fillColor: 'rgba(0,0,0,0)', fillOpacity: 0 }
+          : { strokeWeight: 2, strokeColor: '#333', strokeStyle: 'solid', fillColor: '#cccccc', fillOpacity: 0.3 };
       }
 
       function getLineStyle(type) {
-        if (type === 'mainflow') {
-          return {
-            strokeWeight: 2,
-            strokeColor: '#fc0390',
-            strokeOpacity: 0.8
-          };
-        }
-        return {
-          strokeWeight: 2,
-          strokeColor: '#444',
-          strokeOpacity: 0.5
-        };
+        return type === 'mainflow'
+          ? { strokeWeight: 2, strokeColor: '#fc0390', strokeOpacity: 0.8 }
+          : { strokeWeight: 2, strokeColor: '#444', strokeOpacity: 0.5 };
       }
 
       window.nextSlide = function (button) {
-        const wrapper = button.parentElement;
-        const imgs = wrapper.querySelectorAll('img');
+        const imgs = button.parentElement.querySelectorAll('img');
         let current = Array.from(imgs).findIndex(img => img.classList.contains('active'));
         imgs[current].classList.remove('active');
-        const next = (current + 1) % imgs.length;
-        imgs[next].classList.add('active');
+        imgs[(current + 1) % imgs.length].classList.add('active');
       };
 
       window.prevSlide = function (button) {
-        const wrapper = button.parentElement;
-        const imgs = wrapper.querySelectorAll('img');
+        const imgs = button.parentElement.querySelectorAll('img');
         let current = Array.from(imgs).findIndex(img => img.classList.contains('active'));
         imgs[current].classList.remove('active');
-        const prev = (current - 1 + imgs.length) % imgs.length;
-        imgs[prev].classList.add('active');
+        imgs[(current - 1 + imgs.length) % imgs.length].classList.add('active');
       };
 
-      // GPS 관련 기능
-      let gpsActive = false;
       let gpsMarker = null;
       let watchId = null;
+      const gpsBtn = document.getElementById('gpsToggleBtn');
 
-      document.getElementById('gpsToggleBtn').addEventListener('click', function () {
-        const loader = document.getElementById('gpsLoader');
-
-        if (!gpsActive) {
-          loader.style.display = 'block';
-          if (navigator.geolocation) {
-            watchId = navigator.geolocation.watchPosition(pos => {
-              const latlng = new kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
-              loader.style.display = 'none';
-
-              if (!gpsMarker) {
-                gpsMarker = new kakao.maps.Marker({
-                  position: latlng,
-                  map: map,
-                  image: new kakao.maps.MarkerImage(
-                    'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/blue_dot.png',
-                    new kakao.maps.Size(20, 20),
-                    { offset: new kakao.maps.Point(10, 10) }
-                  )
-                });
-              } else {
-                gpsMarker.setPosition(latlng);
-              }
-
-              map.panTo(latlng);
-            }, err => {
-              loader.style.display = 'none';
-              alert('위치 정보를 가져올 수 없습니다.');
-            }, {
-              enableHighAccuracy: false,
-              timeout: 10000,
-              maximumAge: 0
-            });
-            gpsActive = true;
-          }
-        } else {
-          loader.style.display = 'none';
-          if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      gpsBtn.addEventListener('click', function () {
+        if (watchId) {
+          navigator.geolocation.clearWatch(watchId);
           watchId = null;
           if (gpsMarker) gpsMarker.setMap(null);
           gpsMarker = null;
-          gpsActive = false;
+          gpsBtn.classList.remove('gps-loading');
+        } else if (navigator.geolocation && /Mobi|Android/i.test(navigator.userAgent)) {
+          gpsBtn.classList.add('gps-loading');
+          watchId = navigator.geolocation.watchPosition(position => {
+            const latlng = new kakao.maps.LatLng(position.coords.latitude, position.coords.longitude);
+            if (!gpsMarker) {
+              gpsMarker = new kakao.maps.Marker({
+                position: latlng,
+                image: new kakao.maps.MarkerImage(
+                  'https://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png',
+                  new kakao.maps.Size(32, 32),
+                  { offset: new kakao.maps.Point(16, 16) }
+                )
+              });
+              gpsMarker.setMap(map);
+            } else {
+              gpsMarker.setPosition(latlng);
+            }
+            map.panTo(latlng);
+            gpsBtn.classList.remove('gps-loading');
+          }, err => {
+            console.warn('GPS 오류:', err);
+            gpsBtn.classList.remove('gps-loading');
+          }, {
+            enableHighAccuracy: true
+          });
+        } else {
+          alert('GPS는 모바일 브라우저에서만 지원됩니다.');
         }
       });
     });
