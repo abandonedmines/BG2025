@@ -6,6 +6,37 @@
   <style>
     html, body { margin: 0; padding: 0; height: 100%; }
     #map { width: 100%; height: 100vh; }
+    .slider-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      overflow: hidden;
+      text-align: center;
+    }
+    .slider-wrapper img {
+      width: 100%;
+      max-height: 300px;
+      display: none;
+    }
+    .slider-wrapper img.active {
+      display: block;
+    }
+    .slider-button {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.6);
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    .slider-button.left {
+      left: 0;
+    }
+    .slider-button.right {
+      right: 0;
+    }
   </style>
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9e36db09e57011893c10d8a46f344a7f&autoload=false"></script>
 </head>
@@ -29,14 +60,11 @@
       geojsonFiles.forEach(({ file, layerType }) => {
         fetch(file)
           .then(res => res.json())
-          .then(data => {
-            console.log(`✅ ${file} 로드 완료`);
-            drawGeoJSON(data, layerType);
-          })
+          .then(data => drawGeoJSON(data, layerType))
           .catch(err => console.error(`❌ ${file} 로드 실패:`, err));
       });
 
-      let openInfoWindow = null; // ✅ InfoWindow 추적 변수
+      let openInfoWindow = null;
 
       function drawGeoJSON(geojson, type = 'default') {
         geojson.features.forEach(feature => {
@@ -51,7 +79,7 @@
                 const style = getPolygonStyle(type);
 
                 new kakao.maps.Polygon({
-                  path: path,
+                  path,
                   strokeWeight: style.strokeWeight,
                   strokeColor: style.strokeColor,
                   strokeStyle: style.strokeStyle,
@@ -62,41 +90,28 @@
             });
           }
 
-          if (geomType === 'LineString') {
-            const path = coords.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
-            const style = getLineStyle(type);
+          if (geomType === 'LineString' || geomType === 'MultiLineString') {
+            const lines = geomType === 'LineString' ? [coords] : coords;
+            lines.forEach(line => {
+              const path = line.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
+              const style = getLineStyle(type);
 
-            new kakao.maps.Polyline({
-              path: path,
-              strokeWeight: style.strokeWeight,
-              strokeColor: style.strokeColor,
-              strokeOpacity: style.strokeOpacity
-            }).setMap(map);
+              new kakao.maps.Polyline({
+                path,
+                strokeWeight: style.strokeWeight,
+                strokeColor: style.strokeColor,
+                strokeOpacity: style.strokeOpacity
+              }).setMap(map);
+            });
           }
 
-          if (geomType === 'MultiLineString') {
-          coords.forEach(line => {
-            const path = line.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
-            const style = getLineStyle(type);
-
-            new kakao.maps.Polyline({
-              path: path,
-              strokeWeight: style.strokeWeight,
-              strokeColor: style.strokeColor,
-              strokeOpacity: style.strokeOpacity
-            }).setMap(map);
-          });
-        }
-
-
-          
           if (geomType === 'Point') {
             const [lng, lat] = coords;
             const pointPos = new kakao.maps.LatLng(lat, lng);
 
             if (type === 'sampling') {
               const id = feature.properties?.name;
-              const photo = feature.properties?.photo_url;
+              const photo_urls = feature.properties?.photo_urls;
 
               const marker = new kakao.maps.Marker({ position: pointPos });
               marker.setMap(map);
@@ -125,10 +140,21 @@
               }
 
               if (Array.isArray(photo_urls) && photo_urls.length > 0) {
-                const imagesHTML = photo_urls.map(url => `<img src="${url}" />`).join('');
-                const infowindow = new kakao.maps.InfoWindow({
-                  content: `<div class="slider-container">${imagesHTML}</div>`
-                });
+                const images = photo_urls.map((url, i) =>
+                  `<img src="${url}" class="${i === 0 ? 'active' : ''}" />`).join('');
+
+                const sliderContent = `
+                  <div style="padding:5px;max-width:420px;">
+                    <strong>${id || ''}</strong><br>
+                    <div class="slider-wrapper">
+                      ${images}
+                      <button class="slider-button left" onclick="prevSlide(this)">←</button>
+                      <button class="slider-button right" onclick="nextSlide(this)">→</button>
+                    </div>
+                  </div>
+                `;
+
+                const infowindow = new kakao.maps.InfoWindow({ content: sliderContent });
 
                 kakao.maps.event.addListener(marker, 'click', function () {
                   if (openInfoWindow) openInfoWindow.close();
@@ -143,7 +169,6 @@
         });
       }
 
-      // ✅ 지도 클릭 시 열린 InfoWindow 닫기
       kakao.maps.event.addListener(map, 'click', function () {
         if (openInfoWindow) {
           openInfoWindow.close();
@@ -184,6 +209,25 @@
           strokeOpacity: 0.5
         };
       }
+
+      // 슬라이드 제어 함수 (전역)
+      window.nextSlide = function (button) {
+        const wrapper = button.parentElement;
+        const imgs = wrapper.querySelectorAll('img');
+        let current = Array.from(imgs).findIndex(img => img.classList.contains('active'));
+        imgs[current].classList.remove('active');
+        const next = (current + 1) % imgs.length;
+        imgs[next].classList.add('active');
+      };
+
+      window.prevSlide = function (button) {
+        const wrapper = button.parentElement;
+        const imgs = wrapper.querySelectorAll('img');
+        let current = Array.from(imgs).findIndex(img => img.classList.contains('active'));
+        imgs[current].classList.remove('active');
+        const prev = (current - 1 + imgs.length) % imgs.length;
+        imgs[prev].classList.add('active');
+      };
     });
   </script>
 </body>
