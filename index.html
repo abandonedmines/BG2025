@@ -132,7 +132,7 @@
 
             if (type === 'adits') {
               zoomOnlyMarkers.push({ marker, label });
-              return;
+              marker.setMap(map);
             }
 
             marker.setMap(map);
