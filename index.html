@@ -19,9 +19,7 @@
       display: none;
       object-fit: contain;
     }
-    .slider-wrapper img.active {
-      display: block;
-    }
+    .slider-wrapper img.active { display: block; }
     .slider-button {
       position: absolute;
       top: 50%;
@@ -118,9 +116,9 @@
           const geomType = feature.geometry.type;
           const coords = feature.geometry.coordinates;
           const props = feature.properties || {};
-          const pointPos = new kakao.maps.LatLng(coords[1], coords[0]);
 
           if (geomType === 'Point') {
+            const pointPos = new kakao.maps.LatLng(coords[1], coords[0]);
             const markerImageInfo = markerIcons[type];
             const marker = new kakao.maps.Marker({
               position: pointPos,
@@ -129,9 +127,7 @@
 
             const label = new kakao.maps.CustomOverlay({
               position: pointPos,
-              content: `<div style="background:white;border:2px solid #888;padding:4px 8px;border-radius:6px;font-size:16px;font-weight: bold;transform: translate(20px, -18px);pointer-events: none;box-shadow: 2px 2px 6px rgba(0,0,0,0.2);">${props.name || ''}</div>`,
-              xAnchor: 0,
-              yAnchor: 0.5
+              content: `<div style="background:white;border:2px solid #888;padding:4px 8px;border-radius:6px;font-size:16px;font-weight:bold;transform:translate(20px,-18px);pointer-events:none;box-shadow:2px 2px 6px rgba(0,0,0,0.2);">${props.name || ''}</div>`
             });
 
             if (type === 'adits') {
@@ -140,28 +136,54 @@
             }
 
             marker.setMap(map);
-            label.setMap(map);
+            if (map.getLevel() <= 5) label.setMap(map);
 
             if (Array.isArray(props.photo_urls) && props.photo_urls.length > 0) {
               const images = props.photo_urls.map((url, i) => `<img src="${url}" class="${i === 0 ? 'active' : ''}" />`).join('');
-              const sliderContent = `
-                <div style="padding:5px;max-width:420px;">
-                  <strong>${props.name || ''}</strong><br>
-                  <div class="slider-wrapper">
-                    ${images}
-                    <button class="slider-button left" onclick="prevSlide(this)">←</button>
-                    <button class="slider-button right" onclick="nextSlide(this)">→</button>
-                  </div>
-                </div>`;
+              const sliderContent = `<div style="padding:5px;max-width:420px;"><strong>${props.name || ''}</strong><br><div class="slider-wrapper">${images}<button class="slider-button left" onclick="prevSlide(this)">←</button><button class="slider-button right" onclick="nextSlide(this)">→</button></div></div>`;
               const infowindow = new kakao.maps.InfoWindow({ content: sliderContent });
               kakao.maps.event.addListener(marker, 'click', function () {
                 openInfoWindows.forEach(iw => iw.close());
                 infowindow.open(map, marker);
+                openInfoWindows.length = 0;
                 openInfoWindows.push(infowindow);
               });
             }
           }
+
+          if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
+            const polygons = geomType === 'Polygon' ? [coords] : coords;
+            polygons.forEach(polygon => {
+              polygon.forEach(ring => {
+                const path = ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
+                const style = getPolygonStyle(type);
+                new kakao.maps.Polygon({
+                  path,
+                  strokeWeight: style.strokeWeight,
+                  strokeColor: style.strokeColor,
+                  strokeStyle: style.strokeStyle,
+                  fillColor: style.fillColor,
+                  fillOpacity: style.fillOpacity
+                }).setMap(map);
+              });
+            });
+          }
+
+          if (geomType === 'LineString' || geomType === 'MultiLineString') {
+            const lines = geomType === 'LineString' ? [coords] : coords;
+            lines.forEach(line => {
+              const path = line.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
+              const style = getLineStyle(type);
+              new kakao.maps.Polyline({
+                path,
+                strokeWeight: style.strokeWeight,
+                strokeColor: style.strokeColor,
+                strokeOpacity: style.strokeOpacity
+              }).setMap(map);
+            });
+          }
         });
+
         if (type === 'adits') toggleZoomOnlyMarkers(map.getLevel());
       }
 
@@ -173,8 +195,47 @@
         });
       }
 
+      function getPolygonStyle(type) {
+        if (type === 'boundary') {
+          return {
+            strokeWeight: 2.5,
+            strokeColor: '#FFFF00',
+            strokeStyle: 'dash',
+            fillColor: 'rgba(0,0,0,0)',
+            fillOpacity: 0
+          };
+        }
+        return {
+          strokeWeight: 2,
+          strokeColor: '#333',
+          strokeStyle: 'solid',
+          fillColor: '#cccccc',
+          fillOpacity: 0.3
+        };
+      }
+
+      function getLineStyle(type) {
+        if (type === 'mainflow') {
+          return {
+            strokeWeight: 2,
+            strokeColor: '#fc0390',
+            strokeOpacity: 0.8
+          };
+        }
+        return {
+          strokeWeight: 2,
+          strokeColor: '#444',
+          strokeOpacity: 0.5
+        };
+      }
+
       kakao.maps.event.addListener(map, 'zoom_changed', function () {
         toggleZoomOnlyMarkers(map.getLevel());
+        openInfoWindows.forEach(iw => iw.close());
+        openInfoWindows.length = 0;
+      });
+
+      kakao.maps.event.addListener(map, 'click', function () {
         openInfoWindows.forEach(iw => iw.close());
         openInfoWindows.length = 0;
       });
@@ -235,4 +296,3 @@
   </script>
 </body>
 </html>
-
