@@ -171,6 +171,19 @@ kakao.maps.load(function () {
         if (type === 'adits') {
           zoomOnlyMarkers.push({ marker, label, zoomLevel: zoomLevelSetting });
           marker.setMap(map); // ← 반드시 필요
+
+          if (Array.isArray(props.photo_urls) && props.photo_urls.length > 0) {
+            const images = props.photo_urls.map((url, i) => `<img src="${url}" class="${i === 0 ? 'active' : ''}" />`).join('');
+            const content = `<div style="padding:5px;max-width:420px;"><strong>${props.name || ''}</strong><br><div class="slider-wrapper">${images}<button class="slider-button left" onclick="prevSlide(this)">←</button><button class="slider-button right" onclick="nextSlide(this)">→</button></div></div>`;
+            const infowindow = new kakao.maps.InfoWindow({ content });
+            kakao.maps.event.addListener(marker, 'click', function () {
+             openInfoWindows.forEach(iw => iw.close());
+             infowindow.open(map, marker);
+             openInfoWindows.length = 0;
+             openInfoWindows.push(infowindow);
+            });
+          }
+          
           return;
         }
 
