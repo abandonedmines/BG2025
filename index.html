@@ -84,6 +84,21 @@
       });
 
       const zoomOnlyMarkers = [];
+      const openInfoWindows = [];
+
+      const markerIcons = {
+        sampling: {
+          url: 'https://raw.githubusercontent.com/abandonedmines/BG2025/main/photos/marker_blue.png',
+          size: new kakao.maps.Size(32, 32),
+          offset: new kakao.maps.Point(16, 32)
+        },
+        adits: {
+          url: 'https://raw.githubusercontent.com/abandonedmines/BG2025/main/photos/marker_red.png',
+          size: new kakao.maps.Size(32, 32),
+          offset: new kakao.maps.Point(16, 32)
+        }
+      };
+
       const geojsonFiles = [
         { file: 'samplingresult_1st.geojson', layerType: 'sampling' },
         { file: 'BG_boundary.geojson', layerType: 'boundary' },
@@ -95,129 +110,74 @@
         fetch(file)
           .then(res => res.json())
           .then(data => drawGeoJSON(data, layerType))
-          .catch(err => console.error(`\u274c ${file} \ub85c\ub4dc \uc2e4\ud328:`, err));
+          .catch(err => console.error(`❌ ${file} 로드 실패:`, err));
       });
-
-      let openInfoWindow = null;
 
       function drawGeoJSON(geojson, type = 'default') {
         geojson.features.forEach(feature => {
           const geomType = feature.geometry.type;
           const coords = feature.geometry.coordinates;
-
-          if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
-            const polygons = geomType === 'Polygon' ? [coords] : coords;
-            polygons.forEach(polygon => {
-              polygon.forEach(ring => {
-                const path = ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
-                const style = getPolygonStyle(type);
-                new kakao.maps.Polygon({
-                  path,
-                  strokeWeight: style.strokeWeight,
-                  strokeColor: style.strokeColor,
-                  strokeStyle: style.strokeStyle,
-                  fillColor: style.fillColor,
-                  fillOpacity: style.fillOpacity
-                }).setMap(map);
-              });
-            });
-          }
-
-          if (geomType === 'LineString' || geomType === 'MultiLineString') {
-            const lines = geomType === 'LineString' ? [coords] : coords;
-            lines.forEach(line => {
-              const path = line.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
-              const style = getLineStyle(type);
-              new kakao.maps.Polyline({
-                path,
-                strokeWeight: style.strokeWeight,
-                strokeColor: style.strokeColor,
-                strokeOpacity: style.strokeOpacity
-              }).setMap(map);
-            });
-          }
+          const props = feature.properties || {};
+          const pointPos = new kakao.maps.LatLng(coords[1], coords[0]);
 
           if (geomType === 'Point') {
-            const [lng, lat] = coords;
-            const pointPos = new kakao.maps.LatLng(lat, lng);
+            const markerImageInfo = markerIcons[type];
+            const marker = new kakao.maps.Marker({
+              position: pointPos,
+              image: markerImageInfo ? new kakao.maps.MarkerImage(markerImageInfo.url, markerImageInfo.size, { offset: markerImageInfo.offset }) : undefined
+            });
 
-            if (type === 'sampling' || type === 'adits') {
-              const id = feature.properties?.name || '';
-              const photo_urls = feature.properties?.photo_urls || [];
-              const markerOptions = { position: pointPos };
-              if (type === 'adits') {
-                markerOptions.image = new kakao.maps.MarkerImage(
-                  'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
-                  new kakao.maps.Size(32, 32),
-                  { offset: new kakao.maps.Point(16, 32) }
-                );
-              }
-              const marker = new kakao.maps.Marker(markerOptions);
-              marker.setMap(map);
-              if (type === 'adits') zoomOnlyMarkers.push(marker);
+            const label = new kakao.maps.CustomOverlay({
+              position: pointPos,
+              content: `<div style="background:white;border:2px solid #888;padding:4px 8px;border-radius:6px;font-size:16px;font-weight: bold;transform: translate(20px, -18px);pointer-events: none;box-shadow: 2px 2px 6px rgba(0,0,0,0.2);">${props.name || ''}</div>`,
+              xAnchor: 0,
+              yAnchor: 0.5
+            });
 
-              if (id) {
-                const label = new kakao.maps.CustomOverlay({
-                  position: pointPos,
-                  content: `<div style="background:white;border:2px solid #888;padding:4px 8px;border-radius:6px;font-size:14px;font-weight: bold;transform: translate(20px, -18px);pointer-events: none;box-shadow: 2px 2px 6px rgba(0,0,0,0.2);">${id}</div>`,
-                  xAnchor: 0,
-                  yAnchor: 0.5
-                });
-                label.setMap(map);
-              }
-
-              if (Array.isArray(photo_urls) && photo_urls.length > 0) {
-                const images = photo_urls.map((url, i) =>
-                  `<img src="${url}" class="${i === 0 ? 'active' : ''}" />`).join('');
-                const sliderContent = `
-                  <div style="padding:5px;max-width:420px;">
-                    <strong>${id}</strong><br>
-                    <div class="slider-wrapper">
-                      ${images}
-                      <button class="slider-button left" onclick="prevSlide(this)">\u2190</button>
-                      <button class="slider-button right" onclick="nextSlide(this)">\u2192</button>
-                    </div>
-                  </div>`;
-                const infowindow = new kakao.maps.InfoWindow({ content: sliderContent });
-                kakao.maps.event.addListener(marker, 'click', function () {
-                  if (openInfoWindow) openInfoWindow.close();
-                  infowindow.open(map, marker);
-                  openInfoWindow = infowindow;
-                });
-              }
+            if (type === 'adits') {
+              zoomOnlyMarkers.push({ marker, label });
               return;
             }
 
-            new kakao.maps.Marker({ position: pointPos }).setMap(map);
+            marker.setMap(map);
+            label.setMap(map);
+
+            if (Array.isArray(props.photo_urls) && props.photo_urls.length > 0) {
+              const images = props.photo_urls.map((url, i) => `<img src="${url}" class="${i === 0 ? 'active' : ''}" />`).join('');
+              const sliderContent = `
+                <div style="padding:5px;max-width:420px;">
+                  <strong>${props.name || ''}</strong><br>
+                  <div class="slider-wrapper">
+                    ${images}
+                    <button class="slider-button left" onclick="prevSlide(this)">←</button>
+                    <button class="slider-button right" onclick="nextSlide(this)">→</button>
+                  </div>
+                </div>`;
+              const infowindow = new kakao.maps.InfoWindow({ content: sliderContent });
+              kakao.maps.event.addListener(marker, 'click', function () {
+                openInfoWindows.forEach(iw => iw.close());
+                infowindow.open(map, marker);
+                openInfoWindows.push(infowindow);
+              });
+            }
           }
         });
+        if (type === 'adits') toggleZoomOnlyMarkers(map.getLevel());
       }
 
       function toggleZoomOnlyMarkers(level) {
-        zoomOnlyMarkers.forEach(marker => {
-          marker.setMap(level <= 2 ? map : null);
+        zoomOnlyMarkers.forEach(({ marker, label }) => {
+          const show = level <= 3;
+          marker.setMap(show ? map : null);
+          label.setMap(show ? map : null);
         });
       }
 
       kakao.maps.event.addListener(map, 'zoom_changed', function () {
         toggleZoomOnlyMarkers(map.getLevel());
-        if (openInfoWindow) {
-          openInfoWindow.close();
-          openInfoWindow = null;
-        }
+        openInfoWindows.forEach(iw => iw.close());
+        openInfoWindows.length = 0;
       });
-
-      function getPolygonStyle(type) {
-        return type === 'boundary'
-          ? { strokeWeight: 2.5, strokeColor: '#FFFF00', strokeStyle: 'dash', fillColor: 'rgba(0,0,0,0)', fillOpacity: 0 }
-          : { strokeWeight: 2, strokeColor: '#333', strokeStyle: 'solid', fillColor: '#cccccc', fillOpacity: 0.3 };
-      }
-
-      function getLineStyle(type) {
-        return type === 'mainflow'
-          ? { strokeWeight: 2, strokeColor: '#021ffc', strokeOpacity: 0.8 }
-          : { strokeWeight: 2, strokeColor: '#444', strokeOpacity: 0.5 };
-      }
 
       window.nextSlide = function (button) {
         const imgs = button.parentElement.querySelectorAll('img');
@@ -264,16 +224,15 @@
             map.panTo(latlng);
             gpsBtn.classList.remove('gps-loading');
           }, err => {
-            console.warn('GPS \uc624\ub958:', err);
+            console.warn('GPS 오류:', err);
             gpsBtn.classList.remove('gps-loading');
-          }, {
-            enableHighAccuracy: true
-          });
+          }, { enableHighAccuracy: true });
         } else {
-          alert('GPS\ub294 \uba54\ubc14\uc77c \ube0c\ub77c\uc6b0\uc800\uc5d0\uc11c\ub9cc \uc9c0\uc6d0\ub429\ub2c8\ub2e4.');
+          alert('GPS는 모바일 브라우저에서만 지원됩니다.');
         }
       });
     });
   </script>
 </body>
 </html>
+
