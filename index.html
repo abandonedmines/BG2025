@@ -75,7 +75,6 @@
 <body>
   <div id="map"></div>
   <div class="gps-button" id="gpsToggleBtn" title="내 위치"></div>
-
   <script>
     kakao.maps.load(function () {
       const map = new kakao.maps.Map(document.getElementById('map'), {
@@ -85,7 +84,6 @@
       });
 
       const zoomOnlyMarkers = [];
-
       const geojsonFiles = [
         { file: 'samplingresult_1st.geojson', layerType: 'sampling' },
         { file: 'BG_boundary.geojson', layerType: 'boundary' },
@@ -93,16 +91,16 @@
         { file: 'BG_adits.geojson', layerType: 'adits', zoomLevel: 3 }
       ];
 
-      geojsonFiles.forEach(({ file, layerType, zoomLevel }) => {
+      geojsonFiles.forEach(({ file, layerType }) => {
         fetch(file)
           .then(res => res.json())
-          .then(data => drawGeoJSON(data, layerType, zoomLevel))
-          .catch(err => console.error(`❌ ${file} 로드 실패:`, err));
+          .then(data => drawGeoJSON(data, layerType))
+          .catch(err => console.error(`\u274c ${file} \ub85c\ub4dc \uc2e4\ud328:`, err));
       });
 
       let openInfoWindow = null;
 
-      function drawGeoJSON(geojson, type = 'default', zoomLimit = null) {
+      function drawGeoJSON(geojson, type = 'default') {
         geojson.features.forEach(feature => {
           const geomType = feature.geometry.type;
           const coords = feature.geometry.coordinates;
@@ -143,26 +141,25 @@
             const [lng, lat] = coords;
             const pointPos = new kakao.maps.LatLng(lat, lng);
 
-            if (type === 'adits') {
-              const marker = new kakao.maps.Marker({ position: pointPos });
-              marker.zoomLimit = zoomLimit || 3;
-              if (map.getLevel() <= marker.zoomLimit) {
-                marker.setMap(map);
+            if (type === 'sampling' || type === 'adits') {
+              const id = feature.properties?.name || '';
+              const photo_urls = feature.properties?.photo_urls || [];
+              const markerOptions = { position: pointPos };
+              if (type === 'adits') {
+                markerOptions.image = new kakao.maps.MarkerImage(
+                  'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                  new kakao.maps.Size(32, 32),
+                  { offset: new kakao.maps.Point(16, 32) }
+                );
               }
-              zoomOnlyMarkers.push(marker);
-              return;
-            }
-
-            if (type === 'sampling') {
-              const id = feature.properties?.name;
-              const photo_urls = feature.properties?.photo_urls;
-              const marker = new kakao.maps.Marker({ position: pointPos });
+              const marker = new kakao.maps.Marker(markerOptions);
               marker.setMap(map);
+              if (type === 'adits') zoomOnlyMarkers.push(marker);
 
               if (id) {
                 const label = new kakao.maps.CustomOverlay({
                   position: pointPos,
-                  content: `<div style="background:white;border:2px solid #888;padding:4px 8px;border-radius:6px;font-size:16px;font-weight: bold;transform: translate(20px, -18px);pointer-events: none;box-shadow: 2px 2px 6px rgba(0,0,0,0.2);">${id}</div>`,
+                  content: `<div style="background:white;border:2px solid #888;padding:4px 8px;border-radius:6px;font-size:14px;font-weight: bold;transform: translate(20px, -18px);pointer-events: none;box-shadow: 2px 2px 6px rgba(0,0,0,0.2);">${id}</div>`,
                   xAnchor: 0,
                   yAnchor: 0.5
                 });
@@ -174,11 +171,11 @@
                   `<img src="${url}" class="${i === 0 ? 'active' : ''}" />`).join('');
                 const sliderContent = `
                   <div style="padding:5px;max-width:420px;">
-                    <strong>${id || ''}</strong><br>
+                    <strong>${id}</strong><br>
                     <div class="slider-wrapper">
                       ${images}
-                      <button class="slider-button left" onclick="prevSlide(this)">←</button>
-                      <button class="slider-button right" onclick="nextSlide(this)">→</button>
+                      <button class="slider-button left" onclick="prevSlide(this)">\u2190</button>
+                      <button class="slider-button right" onclick="nextSlide(this)">\u2192</button>
                     </div>
                   </div>`;
                 const infowindow = new kakao.maps.InfoWindow({ content: sliderContent });
@@ -188,20 +185,17 @@
                   openInfoWindow = infowindow;
                 });
               }
-            } else {
-              new kakao.maps.Marker({ position: pointPos }).setMap(map);
+              return;
             }
+
+            new kakao.maps.Marker({ position: pointPos }).setMap(map);
           }
         });
-
-        if (type === 'adits') {
-          toggleZoomOnlyMarkers(map.getLevel());
-        }
       }
 
       function toggleZoomOnlyMarkers(level) {
         zoomOnlyMarkers.forEach(marker => {
-          marker.setMap(level <= marker.zoomLimit ? map : null);
+          marker.setMap(level <= 3 ? map : null);
         });
       }
 
@@ -270,13 +264,13 @@
             map.panTo(latlng);
             gpsBtn.classList.remove('gps-loading');
           }, err => {
-            console.warn('GPS 오류:', err);
+            console.warn('GPS \uc624\ub958:', err);
             gpsBtn.classList.remove('gps-loading');
           }, {
             enableHighAccuracy: true
           });
         } else {
-          alert('GPS는 머리드 브라우저에서만 지원됩니다.');
+          alert('GPS\ub294 \uba54\ubc14\uc77c \ube0c\ub77c\uc6b0\uc800\uc5d0\uc11c\ub9cc \uc9c0\uc6d0\ub429\ub2c8\ub2e4.');
         }
       });
     });
