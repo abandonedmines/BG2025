@@ -84,22 +84,25 @@
         mapTypeId: kakao.maps.MapTypeId.HYBRID
       });
 
+      const zoomOnlyMarkers = [];
+
       const geojsonFiles = [
         { file: 'samplingresult_1st.geojson', layerType: 'sampling' },
         { file: 'BG_boundary.geojson', layerType: 'boundary' },
-        { file: 'BG_mainflowline.geojson', layerType: 'mainflow' }
+        { file: 'BG_mainflowline.geojson', layerType: 'mainflow' },
+        { file: 'BG_adits.geojson', layerType: 'adits', zoomLevel: 3 }
       ];
 
-      geojsonFiles.forEach(({ file, layerType }) => {
+      geojsonFiles.forEach(({ file, layerType, zoomLevel }) => {
         fetch(file)
           .then(res => res.json())
-          .then(data => drawGeoJSON(data, layerType))
+          .then(data => drawGeoJSON(data, layerType, zoomLevel))
           .catch(err => console.error(`❌ ${file} 로드 실패:`, err));
       });
 
       let openInfoWindow = null;
 
-      function drawGeoJSON(geojson, type = 'default') {
+      function drawGeoJSON(geojson, type = 'default', zoomLimit = null) {
         geojson.features.forEach(feature => {
           const geomType = feature.geometry.type;
           const coords = feature.geometry.coordinates;
@@ -139,6 +142,17 @@
           if (geomType === 'Point') {
             const [lng, lat] = coords;
             const pointPos = new kakao.maps.LatLng(lat, lng);
+
+            if (type === 'adits') {
+              const marker = new kakao.maps.Marker({ position: pointPos });
+              marker.zoomLimit = zoomLimit || 3;
+              if (map.getLevel() <= marker.zoomLimit) {
+                marker.setMap(map);
+              }
+              zoomOnlyMarkers.push(marker);
+              return;
+            }
+
             if (type === 'sampling') {
               const id = feature.properties?.name;
               const photo_urls = feature.properties?.photo_urls;
@@ -179,9 +193,20 @@
             }
           }
         });
+
+        if (type === 'adits') {
+          toggleZoomOnlyMarkers(map.getLevel());
+        }
       }
 
-      kakao.maps.event.addListener(map, 'click', function () {
+      function toggleZoomOnlyMarkers(level) {
+        zoomOnlyMarkers.forEach(marker => {
+          marker.setMap(level <= marker.zoomLimit ? map : null);
+        });
+      }
+
+      kakao.maps.event.addListener(map, 'zoom_changed', function () {
+        toggleZoomOnlyMarkers(map.getLevel());
         if (openInfoWindow) {
           openInfoWindow.close();
           openInfoWindow = null;
@@ -251,7 +276,7 @@
             enableHighAccuracy: true
           });
         } else {
-          alert('GPS는 모바일 브라우저에서만 지원됩니다.');
+          alert('GPS는 머리드 브라우저에서만 지원됩니다.');
         }
       });
     });
