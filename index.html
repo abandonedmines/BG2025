@@ -5,10 +5,9 @@
   <title>2025년 부국광산 시료채취</title>
   <style>
     html, body { margin: 0; padding: 0; height: 100%; }
-    #map { width: 100%; height: 100vh; position: relative; }
+    #map { width: 100%; height: 100vh; }
     .slider-wrapper {
       position: relative;
-      width: 100%;
       max-width: 400px;
       overflow: hidden;
       text-align: center;
@@ -19,9 +18,7 @@
       display: none;
       object-fit: contain;
     }
-    .slider-wrapper img.active {
-      display: block;
-    }
+    .slider-wrapper img.active { display: block; }
     .slider-button {
       position: absolute;
       top: 50%;
@@ -73,8 +70,9 @@
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9e36db09e57011893c10d8a46f344a7f&autoload=false"></script>
 </head>
 <body>
-  <div id="map"></div>
-  <div class="gps-button" id="gpsToggleBtn" title="내 위치"></div>
+<div id="map"></div>
+<div class="gps-button" id="gpsToggleBtn" title="내 위치"></div>
+
 <script>
 kakao.maps.load(function () {
   const map = new kakao.maps.Map(document.getElementById('map'), {
@@ -114,9 +112,10 @@ kakao.maps.load(function () {
   });
 
   function drawGeoJSON(geojson, type = 'default') {
-    geojson.features.forEach((feature, index) => {
-      const geomType = feature.geometry.type;
-      const coords = feature.geometry.coordinates;
+    const zoomLevelSetting = geojsonFiles.find(f => f.layerType === type)?.zoomLevel ?? 3;
+
+    geojson.features.forEach(feature => {
+      const { type: geomType, coordinates: coords } = feature.geometry;
       const props = feature.properties || {};
 
       if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
@@ -155,6 +154,8 @@ kakao.maps.load(function () {
         const [lng, lat] = coords;
         const pointPos = new kakao.maps.LatLng(lat, lng);
         const markerImageInfo = markerIcons[type];
+        if (!markerImageInfo) console.warn('❗ Marker 이미지 누락:', type);
+
         const marker = new kakao.maps.Marker({
           position: pointPos,
           image: markerImageInfo ? new kakao.maps.MarkerImage(markerImageInfo.url, markerImageInfo.size, { offset: markerImageInfo.offset }) : undefined
@@ -162,13 +163,12 @@ kakao.maps.load(function () {
 
         const label = new kakao.maps.CustomOverlay({
           position: pointPos,
-          content: `<div style="background:white;border:2px solid #888;padding:4px 8px;border-radius:6px;font-size:16px;font-weight: bold;transform: translate(30px, -25px);pointer-events: none;box-shadow: 2px 2px 6px rgba(0,0,0,0.2);">${props.name || ''}</div>`,
-          xAnchor: 0,
-          yAnchor: 0.5
+          content: `<div style="background:white;border:2px solid #888;padding:4px 8px;border-radius:6px;font-size:16px;font-weight:bold;transform:translate(30px,-25px);pointer-events:none;box-shadow:2px 2px 6px rgba(0,0,0,0.2);">${props.name || ''}</div>`
         });
 
         if (type === 'adits') {
-          zoomOnlyMarkers.push({ marker, label });
+          zoomOnlyMarkers.push({ marker, label, zoomLevel: zoomLevelSetting });
+          marker.setMap(map); // ← 반드시 필요
           return;
         }
 
@@ -177,20 +177,12 @@ kakao.maps.load(function () {
 
         if (Array.isArray(props.photo_urls) && props.photo_urls.length > 0) {
           const images = props.photo_urls.map((url, i) => `<img src="${url}" class="${i === 0 ? 'active' : ''}" />`).join('');
-          const sliderContent = `
-            <div style="padding:5px;max-width:420px;">
-              <strong>${props.name || ''}</strong><br>
-              <div class="slider-wrapper">
-                ${images}
-                <button class="slider-button left" onclick="prevSlide(this)">←</button>
-                <button class="slider-button right" onclick="nextSlide(this)">→</button>
-              </div>
-            </div>`;
-          const infowindow = new kakao.maps.InfoWindow({ content: sliderContent });
+          const content = `<div style="padding:5px;max-width:420px;"><strong>${props.name || ''}</strong><br><div class="slider-wrapper">${images}<button class="slider-button left" onclick="prevSlide(this)">←</button><button class="slider-button right" onclick="nextSlide(this)">→</button></div></div>`;
+          const infowindow = new kakao.maps.InfoWindow({ content });
           kakao.maps.event.addListener(marker, 'click', function () {
             openInfoWindows.forEach(iw => iw.close());
-            openInfoWindows.length = 0;
             infowindow.open(map, marker);
+            openInfoWindows.length = 0;
             openInfoWindows.push(infowindow);
           });
         }
@@ -201,11 +193,45 @@ kakao.maps.load(function () {
   }
 
   function toggleZoomOnlyMarkers(level) {
-    zoomOnlyMarkers.forEach(({ marker, label }) => {
-      const show = level <= 3;
+    zoomOnlyMarkers.forEach(({ marker, label, zoomLevel = 3 }) => {
+      const show = level <= zoomLevel;
       marker.setMap(show ? map : null);
       label.setMap(show ? map : null);
     });
+  }
+
+  function getPolygonStyle(type) {
+    if (type === 'boundary') {
+      return {
+        strokeWeight: 2.5,
+        strokeColor: '#FFFF00',
+        strokeStyle: 'dash',
+        fillColor: 'rgba(0,0,0,0)',
+        fillOpacity: 0
+      };
+    }
+    return {
+      strokeWeight: 2,
+      strokeColor: '#333',
+      strokeStyle: 'solid',
+      fillColor: '#cccccc',
+      fillOpacity: 0.3
+    };
+  }
+
+  function getLineStyle(type) {
+    if (type === 'mainflow') {
+      return {
+        strokeWeight: 2,
+        strokeColor: '#fc0390',
+        strokeOpacity: 0.8
+      };
+    }
+    return {
+      strokeWeight: 2,
+      strokeColor: '#444',
+      strokeOpacity: 0.5
+    };
   }
 
   kakao.maps.event.addListener(map, 'zoom_changed', function () {
@@ -219,18 +245,18 @@ kakao.maps.load(function () {
     openInfoWindows.length = 0;
   });
 
-  window.nextSlide = function (button) {
-    const imgs = button.parentElement.querySelectorAll('img');
-    let current = Array.from(imgs).findIndex(img => img.classList.contains('active'));
-    imgs[current].classList.remove('active');
-    imgs[(current + 1) % imgs.length].classList.add('active');
+  window.nextSlide = function (btn) {
+    const imgs = btn.parentElement.querySelectorAll('img');
+    const idx = Array.from(imgs).findIndex(i => i.classList.contains('active'));
+    imgs[idx].classList.remove('active');
+    imgs[(idx + 1) % imgs.length].classList.add('active');
   };
 
-  window.prevSlide = function (button) {
-    const imgs = button.parentElement.querySelectorAll('img');
-    let current = Array.from(imgs).findIndex(img => img.classList.contains('active'));
-    imgs[current].classList.remove('active');
-    imgs[(current - 1 + imgs.length) % imgs.length].classList.add('active');
+  window.prevSlide = function (btn) {
+    const imgs = btn.parentElement.querySelectorAll('img');
+    const idx = Array.from(imgs).findIndex(i => i.classList.contains('active'));
+    imgs[idx].classList.remove('active');
+    imgs[(idx - 1 + imgs.length) % imgs.length].classList.add('active');
   };
 
   let gpsMarker = null;
@@ -242,12 +268,11 @@ kakao.maps.load(function () {
       navigator.geolocation.clearWatch(watchId);
       watchId = null;
       if (gpsMarker) gpsMarker.setMap(null);
-      gpsMarker = null;
       gpsBtn.classList.remove('gps-loading');
     } else if (navigator.geolocation && /Mobi|Android/i.test(navigator.userAgent)) {
       gpsBtn.classList.add('gps-loading');
-      watchId = navigator.geolocation.watchPosition(position => {
-        const latlng = new kakao.maps.LatLng(position.coords.latitude, position.coords.longitude);
+      watchId = navigator.geolocation.watchPosition(pos => {
+        const latlng = new kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
         if (!gpsMarker) {
           gpsMarker = new kakao.maps.Marker({
             position: latlng,
@@ -257,10 +282,10 @@ kakao.maps.load(function () {
               { offset: new kakao.maps.Point(16, 16) }
             )
           });
-          gpsMarker.setMap(map);
         } else {
           gpsMarker.setPosition(latlng);
         }
+        gpsMarker.setMap(map);
         map.panTo(latlng);
         gpsBtn.classList.remove('gps-loading');
       }, err => {
@@ -275,3 +300,4 @@ kakao.maps.load(function () {
 </script>
 </body>
 </html>
+
