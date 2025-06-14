@@ -1,9 +1,10 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <title>2025년 부국광산 현장정보 공유시스템</title>
-  <style>
+<meta charset="utf-8"/>
+<title>2025년 부국광산 현장정보 공유시스템</title>
+<style>
     html, body { margin: 0; padding: 0; height: 100%; }
     #map { width: 100%; height: 100vh; position: relative; }
     .slider-wrapper {
@@ -69,7 +70,7 @@
     #layerControl {
       position: absolute;
       top: 10px;
-      left: 10px;
+      right: 10px;
       background: rgba(255, 255, 255, 0.9);
       border: 1px solid #ccc;
       border-radius: 4px;
@@ -94,20 +95,25 @@
       align-items: center;
     }
   </style>
-  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9e36db09e57011893c10d8a46f344a7f&autoload=false"></script>
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
-  <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css">
-</head>
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9e36db09e57011893c10d8a46f344a7f&amp;autoload=false"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
+<link href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css" rel="stylesheet"/>
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9e36db09e57011893c10d8a46f344a7f&amp;libraries=services"></script></head>
 <body>
-  <div id="map"></div>
-  <div class="gps-button" id="gpsToggleBtn" title="내 위치"></div>
-  <div id="layerControl">
-    <strong>레이어 설정</strong>
-    <ul id="layerList"></ul>
-  </div>
 
-  <script>
+<div id="searchContainer" style="position:absolute;top:10px;left:10px;z-index:200;background:white;padding:8px;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+<input id="keyword" placeholder="주소 검색" style="width:200px;padding:4px;" type="text"/>
+<button onclick="searchPlaces()" style="padding:4px;">검색</button>
+<ul id="placesList" style="list-style:none;padding:0;margin-top:5px;max-height:200px;overflow:auto;"></ul>
+</div>
+<div id="map"></div>
+<div class="gps-button" id="gpsToggleBtn" title="내 위치"></div>
+<div id="layerControl">
+<strong>레이어 설정</strong>
+<ul id="layerList"></ul>
+</div>
+<script>
     kakao.maps.load(function () {
       const map = new kakao.maps.Map(document.getElementById('map'), {
         center: new kakao.maps.LatLng(36.460980, 127.615083),
@@ -336,6 +342,40 @@
       drawLayerControl();
       fetchLayers();
     });
-  </script>
+  
+
+let ps, infowindow;
+function searchPlaces() {
+  const keyword = document.getElementById('keyword').value.trim();
+  if (!keyword) {
+    alert('검색어를 입력하세요!');
+    return;
+  }
+  ps = new kakao.maps.services.Places();
+  ps.keywordSearch(keyword, placesSearchCB);
+}
+
+function placesSearchCB(data, status, pagination) {
+  const listEl = document.getElementById('placesList');
+  listEl.innerHTML = '';
+  if (status !== kakao.maps.services.Status.OK) {
+    alert('검색 결과가 없습니다.');
+    return;
+  }
+  data.forEach(place => {
+    const el = document.createElement('li');
+    el.textContent = place.place_name;
+    el.style.cursor = 'pointer';
+    el.style.padding = '4px';
+    el.style.borderBottom = '1px solid #ddd';
+    el.onclick = () => {
+      const pos = new kakao.maps.LatLng(place.y, place.x);
+      map.setLevel(3);
+      map.panTo(pos);
+    };
+    listEl.appendChild(el);
+  });
+}
+        </script>
 </body>
 </html>
