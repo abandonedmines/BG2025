@@ -369,29 +369,18 @@ function searchPlaces() {
         el.style.cursor = 'pointer';
         el.style.padding = '4px';
         el.style.borderBottom = '1px solid #ddd';
-
         el.onclick = () => {
           const pos = new kakao.maps.LatLng(place.y, place.x);
           map.setLevel(3);
-          map.panTo(pos);
-
-          // 기존 마커 제거
-          if (searchMarker) {
-            searchMarker.setMap(null);
-          }
-
-          // 새 마커 생성 및 지도에 표시
-          searchMarker = new kakao.maps.Marker({
-            position: pos,
-            map: map,
-            image: new kakao.maps.MarkerImage(
-              'https://raw.githubusercontent.com/abandonedmines/BG2025/main/photos/marker_yellow.png',
-              new kakao.maps.Size(32, 32),
-              { offset: new kakao.maps.Point(12, 35) }
-            )
-          });
+           map.panTo(pos);  // 키보드 내리기: 입력창 포커스 해제
+          const input = document.getElementById('keyword');
+          input.blur();   // 모바일 화면 복원
+          setTimeout(() => {
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); // iOS에 강제 적용
+          document.body.scrollTop = 0;
+          map.relayout();  // 지도 재정렬
+          }, 300);
         };
-
         listEl.appendChild(el);
       });
     } else {
