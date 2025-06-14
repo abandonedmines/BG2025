@@ -417,10 +417,16 @@ function placesSearchCB(data, status, pagination) {
     el.style.padding = '4px';
     el.style.borderBottom = '1px solid #ddd';
     el.onclick = () => {
-      const pos = new kakao.maps.LatLng(place.y, place.x);
-      map.setLevel(3);
-      map.panTo(pos);
-    };
+  const pos = new kakao.maps.LatLng(place.y, place.x);
+  map.setLevel(3);           // 확대 레벨 지정
+  map.panTo(pos);            // 해당 좌표로 이동
+
+  document.activeElement.blur();  // 키보드 내리기
+  window.scrollTo(0, 0);          // 화면 복원
+  document.body.scrollTop = 0;
+
+  setTimeout(() => map.relayout(), 300);  // 지도 재정렬 (중요)
+};
     listEl.appendChild(el);
   });
 }
