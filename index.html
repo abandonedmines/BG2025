@@ -292,6 +292,12 @@ let map;
       kakao.maps.event.addListener(map, 'click', function () {
         openInfoWindows.forEach(iw => iw.close());
         openInfoWindows.length = 0;
+
+        // 지도 클릭 시 입력 포커스 해제
+        const input = document.getElementById('keyword');
+        if (document.activeElement === input) {
+          input.blur();
+        }
       });
 
       window.nextSlide = function (btn) {
@@ -388,6 +394,13 @@ function searchPlaces() {
     }
   });
 }
+
+document.getElementById('keyword').addEventListener('blur', () => {
+  setTimeout(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    map.relayout();
+  }, 300);
+});
                
         </script>
 </body>
