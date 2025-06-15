@@ -347,35 +347,7 @@ let map;
         } else alert('GPS는 모바일 브라우저에서만 지원됩니다.');
       });
 
-      
-      kakao.maps.event.addListener(map, 'click', function () {
-        openInfoWindows.forEach(iw => iw.close());
-        openInfoWindows.length = 0;
-
-        const input = document.getElementById('keyword');
-        if (document.activeElement === input) {
-          input.blur();
-        }
-
-        if (searchMarker) {
-          searchMarker.setMap(null);
-          searchMarker = null;
-        }
-      });
-
-      kakao.maps.event.addListener(map, 'dragend', function () {
-        const input = document.getElementById('keyword');
-        if (document.activeElement === input) {
-          input.blur();
-        }
-
-        if (searchMarker) {
-          searchMarker.setMap(null);
-          searchMarker = null;
-        }
-      });
-
-drawLayerControl();
+      drawLayerControl();
       fetchLayers();
     });
   
