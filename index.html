@@ -378,7 +378,17 @@ function searchPlaces() {
         el.onclick = () => {
           const pos = new kakao.maps.LatLng(place.y, place.x);
           map.setLevel(3);
-           map.panTo(pos);  // 키보드 내리기: 입력창 포커스 해제
+           map.panTo(pos);
+if (searchMarker) searchMarker.setMap(null);
+          searchMarker = new kakao.maps.Marker({
+            position: pos,
+            image: new kakao.maps.MarkerImage(
+              'https://raw.githubusercontent.com/abandonedmines/BG2025/main/photos/marker_yellow.png',
+              new kakao.maps.Size(32, 32),
+              { offset: new kakao.maps.Point(16, 32) }
+            )
+          });
+          searchMarker.setMap(map);  // 키보드 내리기: 입력창 포커스 해제
           const input = document.getElementById('keyword');
           input.blur();   // 모바일 화면 복원
           setTimeout(() => {
