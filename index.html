@@ -343,16 +343,6 @@ let map;
 
       drawLayerControl();
       fetchLayers();
-      // --- Mobile focus handling: blur search field when map interacted ---
-      function blurSearchInput() {
-        const kw=document.getElementById('keyword');
-        if (kw && document.activeElement === kw) {
-          kw.blur();
-        }
-      }
-      kakao.maps.event.addListener(map, 'click', blurSearchInput);
-      kakao.maps.event.addListener(map, 'dragstart', blurSearchInput);
-
     });
   
 
@@ -389,7 +379,6 @@ function searchPlaces() {
           window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); // iOS에 강제 적용
           document.body.scrollTop = 0;
           map.relayout();  // 지도 재정렬
-          document.getElementById('placesList').innerHTML='';
           }, 300);
         };
         listEl.appendChild(el);
