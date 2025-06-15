@@ -44,7 +44,7 @@
       width: 42px;
       height: 42px;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-      background-image: url('https://raw.githubusercontent.com/abandonedmines/BG2025/main/photos/My_GPS.png');
+      background-image: url('./photos/My_GPS.png');
       background-size: 80% 80%;
       background-repeat: no-repeat;
       background-position: center;
@@ -136,12 +136,12 @@ let map;
 
       const markerIcons = {
         sampling: {
-          url: 'https://raw.githubusercontent.com/abandonedmines/BG2025/main/photos/marker_blue.png',
+          url: './photos/marker_blue.png',
           size: new kakao.maps.Size(32, 32),
           offset: new kakao.maps.Point(16, 32)
         },
         adits: {
-          url: 'https://raw.githubusercontent.com/abandonedmines/BG2025/main/photos/marker_red.png',
+          url: './photos/marker_red.png',
           size: new kakao.maps.Size(32, 32),
           offset: new kakao.maps.Point(16, 32)
         }
@@ -383,7 +383,7 @@ if (searchMarker) searchMarker.setMap(null);
           searchMarker = new kakao.maps.Marker({
             position: pos,
             image: new kakao.maps.MarkerImage(
-              'https://raw.githubusercontent.com/abandonedmines/BG2025/main/photos/marker_yellow.png',
+              './photos/marker_yellow.png',
               new kakao.maps.Size(32, 32),
               { offset: new kakao.maps.Point(16, 32) }
             )
