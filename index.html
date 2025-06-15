@@ -388,13 +388,6 @@ function searchPlaces() {
     }
   });
 }
-
-document.getElementById('keyword').addEventListener('blur', () => {
-  setTimeout(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    map.relayout();
-  }, 300);
-});
                
         </script>
 </body>
