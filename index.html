@@ -1,124 +1,401 @@
 <!DOCTYPE html>
-<html>
+
+<html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <title>GeoJSON Drag & Drop Viewer</title>
-  <style>
+<meta charset="utf-8"/>
+<title>2025년 부국광산 현장정보 공유시스템</title>
+<style>
     html, body { margin: 0; padding: 0; height: 100%; }
-    #map { width: 100%; height: 100vh; }
-    #dropzone {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      z-index: 999;
-      background: rgba(0,0,0,0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2em;
-      color: #fff;
-      border: 3px dashed #fff;
-      pointer-events: none;
-      opacity: 0;
-      transition: 0.3s;
+    #map { width: 100%; height: 100vh; position: relative; }
+    .slider-wrapper {
+      position: relative;
+      max-width: 400px;
+      overflow: hidden;
+      text-align: center;
     }
-    #dropzone.active {
-      pointer-events: auto;
-      opacity: 1;
+    .slider-wrapper img {
+      width: 100%;
+      max-height: 400px;
+      display: none;
+      object-fit: contain;
+    }
+    .slider-wrapper img.active { display: block; }
+    .slider-button {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.6);
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      font-size: 18px;
+      z-index: 10;
+    }
+    .slider-button.left { left: 5px; }
+    .slider-button.right { right: 5px; }
+    .gps-button {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 50%;
+      width: 42px;
+      height: 42px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      background-image: url('https://raw.githubusercontent.com/abandonedmines/BG2025/main/photos/My_GPS.png');
+      background-size: 80% 80%;
+      background-repeat: no-repeat;
+      background-position: center;
+      cursor: pointer;
+      z-index: 100;
+    }
+    .gps-loading::after {
+      content: '';
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border: 3px solid #ccc;
+      border-top: 3px solid #333;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      top: 9px;
+      left: 9px;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    #layerControl {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 10px;
+      z-index: 100;
+      max-height: 300px;
+      overflow: auto;
+    }
+    #layerControl ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    #layerControl li {
+      cursor: move;
+      padding: 4px 8px;
+      border: 1px solid #ddd;
+      margin-bottom: 5px;
+      background: #f9f9f9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
   </style>
-  <!-- ✅ 카카오맵 API 로드 -->
-  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9e36db09e57011893c10d8a46f344a7f&autoload=false"></script>
-</head>
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9e36db09e57011893c10d8a46f344a7f&amp;autoload=false"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
+<link href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css" rel="stylesheet"/>
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9e36db09e57011893c10d8a46f344a7f&amp;libraries=services"></script></head>
 <body>
-  <div id="map"></div>
-  <div id="dropzone">📂 GeoJSON 파일을 여기에 드래그하세요</div>
 
-  <script>
+<div id="searchContainer" style="position:absolute;top:10px;left:10px;z-index:200;background:white;padding:8px;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+<input id="keyword" placeholder="주소 검색" style="width:200px;padding:4px;" type="text"/>
+<button onclick="searchPlaces()" style="padding:4px;">검색</button>
+<ul id="placesList" style="list-style:none;padding:0;margin-top:5px;max-height:200px;overflow:auto;"></ul>
+</div>
+<div id="map"></div>
+<div class="gps-button" id="gpsToggleBtn" title="내 위치"></div>
+<div id="layerControl">
+<strong>레이어 설정</strong>
+<ul id="layerList"></ul>
+</div>
+<script>
+let map;
+
     kakao.maps.load(function () {
-      const map = new kakao.maps.Map(document.getElementById('map'), {
+      map = new kakao.maps.Map(document.getElementById('map'), {
         center: new kakao.maps.LatLng(36.460980, 127.615083),
         level: 4,
         mapTypeId: kakao.maps.MapTypeId.HYBRID
       });
 
-      const dropzone = document.getElementById('dropzone');
+      const layerData = {
+        adits: { file: 'BG_adits.geojson', name: '갱구', visible: true, zoomLevel: 3 },
+        sampling: { file: 'samplingresult_1st.geojson', name: '시료채취지점', visible: true },
+        remediation: { file: 'BG_soilremediation.geojson', name: '토양복원지역', visible: true },
+        mainflow: { file: 'BG_mainflowline.geojson', name: '하천중심선', visible: true },
+        boundary: { file: 'BG_boundary.geojson', name: '임야지역경계', visible: true }
+      };
 
-      // ✅ 드래그 동작 기본 막기
-      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt =>
-        document.addEventListener(evt, e => {
-          e.preventDefault();
-          e.stopPropagation();
-        })
-      );
+      const layerOrder = ['adits', 'sampling', 'remediation', 'mainflow', 'boundary'];
+      const layerObjects = {};
 
-      document.addEventListener('dragover', () => dropzone.classList.add('active'));
-      document.addEventListener('dragleave', () => dropzone.classList.remove('active'));
-
-      document.addEventListener('drop', e => {
-        dropzone.classList.remove('active');
-        const file = e.dataTransfer.files[0];
-        console.log('📁 드래그된 파일:', file);
-
-        if (!file || !file.name.endsWith('.geojson')) {
-          alert('GeoJSON 파일만 지원됩니다.');
-          return;
+      const markerIcons = {
+        sampling: {
+          url: 'https://raw.githubusercontent.com/abandonedmines/BG2025/main/photos/marker_blue.png',
+          size: new kakao.maps.Size(32, 32),
+          offset: new kakao.maps.Point(16, 32)
+        },
+        adits: {
+          url: 'https://raw.githubusercontent.com/abandonedmines/BG2025/main/photos/marker_red.png',
+          size: new kakao.maps.Size(32, 32),
+          offset: new kakao.maps.Point(16, 32)
         }
+      };
 
-        const reader = new FileReader();
-        reader.onload = () => {
-          try {
-            console.log('📄 파일 내용 로드됨');
-            const geojson = JSON.parse(reader.result);
-            console.log('✅ 파싱된 GeoJSON:', geojson);
-            drawGeoJSON(geojson);
-          } catch (err) {
-            console.error('❌ JSON 파싱 실패:', err);
-            alert('유효한 GeoJSON 파일이 아닙니다.');
-          }
-        };
-        reader.readAsText(file);
-      });
+      const openInfoWindows = [];
 
-      function drawGeoJSON(geojson) {
-        geojson.features.forEach(feature => {
-          const type = feature.geometry.type;
-          const coords = feature.geometry.coordinates;
-
-          if (type === 'Polygon' || type === 'MultiPolygon') {
-            const polygons = type === 'Polygon' ? [coords] : coords;
-            polygons.forEach(polygon => {
-              polygon.forEach(ring => {
-                const path = ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
-                new kakao.maps.Polygon({
-                  path,
-                  strokeWeight: 2,
-                  strokeColor: '#FF0000',
-                  fillColor: 'rgba(255,0,0,0.4)',
-                  fillOpacity: 0.6
-                }).setMap(map);
-              });
+      function fetchLayers() {
+        layerOrder.forEach(layerType => {
+          const { file } = layerData[layerType];
+          fetch(file)
+            .then(res => res.json())
+            .then(geojson => {
+              const objs = drawGeoJSON(geojson, layerType);
+              layerObjects[layerType] = objs;
+              if (!layerData[layerType].visible) setLayerVisibility(layerType, false);
             });
-          }
-
-          if (type === 'LineString') {
-            const path = coords.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
-            new kakao.maps.Polyline({
-              path,
-              strokeWeight: 3,
-              strokeColor: '#0000FF',
-              strokeOpacity: 0.7
-            }).setMap(map);
-          }
-
-          if (type === 'Point') {
-            const [lng, lat] = coords;
-            new kakao.maps.Marker({
-              position: new kakao.maps.LatLng(lat, lng)
-            }).setMap(map);
-          }
         });
       }
+
+      function setLayerVisibility(type, visible) {
+        if (!layerObjects[type]) return;
+        layerObjects[type].forEach(obj => {
+          if (obj.setMap) obj.setMap(visible ? map : null);
+        });
+      }
+
+      function refreshLayerOrder() {
+        const zIndexStart = 100;
+        [...$('#layerList li')].reverse().forEach((li, i) => {
+          const type = $(li).data('layer');
+          layerObjects[type]?.forEach(obj => obj.setZIndex?.(zIndexStart + i));
+        });
+      }
+
+      function drawLayerControl() {
+        const $list = $('#layerList').empty();
+        layerOrder.forEach(type => {
+          const li = $(`<li data-layer="${type}"><span>${layerData[type].name}</span><input type="checkbox" checked /></li>`);
+          li.find('input').prop('checked', layerData[type].visible);
+          li.find('input').on('change', function () {
+            layerData[type].visible = this.checked;
+            setLayerVisibility(type, this.checked);
+          });
+          $list.append(li);
+        });
+        $list.sortable({ update: function () {
+          layerOrder.length = 0;
+          $list.children().each((_, li) => layerOrder.push($(li).data('layer')));
+          refreshLayerOrder();
+        }});
+      }
+
+      function drawGeoJSON(geojson, type) {
+        const objs = [];
+        geojson.features.forEach(f => {
+          const { type: gtype, coordinates } = f.geometry;
+          const props = f.properties || {};
+
+          if (gtype === 'Polygon' || gtype === 'MultiPolygon') {
+            const polys = gtype === 'Polygon' ? [coordinates] : coordinates;
+            polys.forEach(polygon => {
+              polygon.forEach(ring => {
+                const path = ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
+                const style = getPolygonStyle(type);
+                const poly = new kakao.maps.Polygon({
+                  path,
+                  strokeWeight: style.strokeWeight,
+                  strokeColor: style.strokeColor,
+                  strokeStyle: style.strokeStyle,
+                  fillColor: style.fillColor,
+                  fillOpacity: style.fillOpacity
+                });
+                poly.setMap(map);
+                objs.push(poly);
+              });
+            });
+          } else if (gtype === 'LineString' || gtype === 'MultiLineString') {
+            const lines = gtype === 'LineString' ? [coordinates] : coordinates;
+            lines.forEach(line => {
+              const path = line.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
+              const style = getLineStyle(type);
+              const polyline = new kakao.maps.Polyline({
+                path,
+                strokeWeight: style.strokeWeight,
+                strokeColor: style.strokeColor,
+                strokeOpacity: style.strokeOpacity
+              });
+              polyline.setMap(map);
+              objs.push(polyline);
+            });
+          } else if (gtype === 'Point') {
+            const [lng, lat] = coordinates;
+            const pointPos = new kakao.maps.LatLng(lat, lng);
+            const markerImageInfo = markerIcons[type];
+            const marker = new kakao.maps.Marker({
+              position: pointPos,
+              image: markerImageInfo ? new kakao.maps.MarkerImage(markerImageInfo.url, markerImageInfo.size, { offset: markerImageInfo.offset }) : undefined
+            });
+            marker.setMap(map);
+            objs.push(marker);
+
+            const label = new kakao.maps.CustomOverlay({
+              position: pointPos,
+              content: `<div style="background:white;border:2px solid #888;padding:4px 8px;border-radius:6px;font-size:16px;font-weight:bold;transform:translate(30px,-25px);pointer-events:none;box-shadow:2px 2px 6px rgba(0,0,0,0.2);">${props.name || ''}</div>`,
+              xAnchor: 0,
+              yAnchor: 0.5
+            });
+            label.setMap(map);
+            objs.push(label);
+
+            if (Array.isArray(props.photo_urls) && props.photo_urls.length > 0) {
+              const images = props.photo_urls.map((url, i) => `<img src="${url}" class="${i === 0 ? 'active' : ''}" />`).join('');
+              const content = `<div style="padding:5px;max-width:420px;"><strong>${props.name || ''}</strong><br><div class="slider-wrapper">${images}<button class="slider-button left" onclick="prevSlide(this)">←</button><button class="slider-button right" onclick="nextSlide(this)">→</button></div></div>`;
+              const infowindow = new kakao.maps.InfoWindow({ content });
+              kakao.maps.event.addListener(marker, 'click', function () {
+                openInfoWindows.forEach(iw => iw.close());
+                infowindow.open(map, marker);
+                openInfoWindows.length = 0;
+                openInfoWindows.push(infowindow);
+              });
+            }
+          }
+        });
+        return objs;
+      }
+
+      function getPolygonStyle(type) {
+       if (type === 'boundary') {
+       return { strokeWeight: 2.5, strokeColor: '#FFFF00', strokeStyle: 'dash', fillColor: 'rgba(0,0,0,0)', fillOpacity: 0 };
+       } 
+       else if (type === 'remediation') {
+       return { strokeWeight: 2.5, strokeColor: '#7601F3', strokeStyle: 'solid', fillColor: '#A016FC', fillOpacity: 0.3 };
+       } 
+       else { return { strokeWeight: 2, strokeColor: '#333', strokeStyle: 'solid', fillColor: '#ccc', fillOpacity: 0.3 };
+       }
+      }
+
+      function getLineStyle(type) {
+        if (type === 'mainflow') return { strokeWeight: 2, strokeColor: '#0775FC', strokeOpacity: 0.8 };
+        return { strokeWeight: 2, strokeColor: '#444', strokeOpacity: 0.5 };
+      }
+
+      kakao.maps.event.addListener(map, 'zoom_changed', function () {
+        openInfoWindows.forEach(iw => iw.close());
+        openInfoWindows.length = 0;
+      });
+      kakao.maps.event.addListener(map, 'click', function () {
+        openInfoWindows.forEach(iw => iw.close());
+        openInfoWindows.length = 0;
+      });
+
+      window.nextSlide = function (btn) {
+        const imgs = btn.parentElement.querySelectorAll('img');
+        const idx = Array.from(imgs).findIndex(i => i.classList.contains('active'));
+        imgs[idx].classList.remove('active');
+        imgs[(idx + 1) % imgs.length].classList.add('active');
+      };
+      window.prevSlide = function (btn) {
+        const imgs = btn.parentElement.querySelectorAll('img');
+        const idx = Array.from(imgs).findIndex(i => i.classList.contains('active'));
+        imgs[idx].classList.remove('active');
+        imgs[(idx - 1 + imgs.length) % imgs.length].classList.add('active');
+      };
+
+      let gpsMarker = null;
+      let watchId = null;
+      const gpsBtn = document.getElementById('gpsToggleBtn');
+
+      gpsBtn.addEventListener('click', function () {
+        if (watchId) {
+          navigator.geolocation.clearWatch(watchId);
+          watchId = null;
+          if (gpsMarker) gpsMarker.setMap(null);
+          gpsBtn.classList.remove('gps-loading');
+        } else if (navigator.geolocation && /Mobi|Android/i.test(navigator.userAgent)) {
+          gpsBtn.classList.add('gps-loading');
+          watchId = navigator.geolocation.watchPosition(pos => {
+            const latlng = new kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
+            if (!gpsMarker) {
+              gpsMarker = new kakao.maps.Marker({
+                position: latlng,
+                image: new kakao.maps.MarkerImage(
+                  'https://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png',
+                  new kakao.maps.Size(32, 32),
+                  { offset: new kakao.maps.Point(16, 16) }
+                )
+              });
+            } else gpsMarker.setPosition(latlng);
+            gpsMarker.setMap(map);
+            map.panTo(latlng);
+            gpsBtn.classList.remove('gps-loading');
+          }, err => {
+            console.warn('GPS 오류:', err);
+            gpsBtn.classList.remove('gps-loading');
+          }, { enableHighAccuracy: true });
+        } else alert('GPS는 모바일 브라우저에서만 지원됩니다.');
+      });
+
+      drawLayerControl();
+      fetchLayers();
     });
-  </script>
+  
+
+let ps, infowindow;
+
+let searchMarker = null; // 함수 밖 상단에 선언해두면 계속 재사용 가능
+
+function searchPlaces() {
+  const keyword = document.getElementById('keyword').value.trim();
+  if (!keyword) {
+    alert('검색어를 입력하세요!');
+    return;
+  }
+
+  const geocoder = new kakao.maps.services.Geocoder();
+  geocoder.addressSearch(keyword, function(result, status) {
+    const listEl = document.getElementById('placesList');
+    listEl.innerHTML = '';
+
+    if (status === kakao.maps.services.Status.OK) {
+      result.forEach(place => {
+        const el = document.createElement('li');
+        el.textContent = place.address.address_name;
+        el.style.cursor = 'pointer';
+        el.style.padding = '4px';
+        el.style.borderBottom = '1px solid #ddd';
+        el.onclick = () => {
+          const pos = new kakao.maps.LatLng(place.y, place.x);
+          map.setLevel(3);
+           map.panTo(pos);  // 키보드 내리기: 입력창 포커스 해제
+          const input = document.getElementById('keyword');
+          input.blur();   // 모바일 화면 복원
+          setTimeout(() => {
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); // iOS에 강제 적용
+          document.body.scrollTop = 0;
+          map.relayout();  // 지도 재정렬
+          }, 300);
+        };
+        listEl.appendChild(el);
+      });
+    } else {
+      alert('검색 결과가 없습니다.');
+    }
+  });
+}
+
+document.getElementById('keyword').addEventListener('blur', () => {
+  setTimeout(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    map.relayout();
+  }, 300);
+});
+               
+        </script>
 </body>
 </html>
