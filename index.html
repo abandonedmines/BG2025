@@ -395,17 +395,7 @@ if (searchMarker) searchMarker.setMap(null);
           window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); // iOS에 강제 적용
           document.body.scrollTop = 0;
           map.relayout();  // 지도 재정렬
-
-          // === B안: input 요소 재생성으로 포커스 완전 초기화 ===
-          (function(){
-            const oldInput = document.getElementById('keyword');
-            const parent = oldInput.parentNode;
-            const newInput = oldInput.cloneNode(true);
-            newInput.value = oldInput.value; // 필요 시 유지
-            parent.replaceChild(newInput, oldInput);
-          })();
-          setTimeout(() => { window.scrollTo(0,0); map.relayout(); }, 500);
-        
+// C variant does not need extra code.
           }, 300);
         };
         listEl.appendChild(el);
