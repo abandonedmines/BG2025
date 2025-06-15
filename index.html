@@ -2,7 +2,6 @@
 
 <html lang="ko">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta charset="utf-8"/>
 <title>2025년 부국광산 현장정보 공유시스템</title>
 <style>
@@ -104,7 +103,7 @@
 <body>
 
 <div id="searchContainer" style="position:absolute;top:10px;left:10px;z-index:200;background:white;padding:8px;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
-<input id="keyword" placeholder="주소 검색" style="font-size:16px;width:200px;padding:4px;" type="text"/>
+<input id="keyword" placeholder="주소 검색" style="width:200px;padding:4px;" type="text"/>
 <button onclick="searchPlaces()" style="padding:4px;">검색</button>
 <ul id="placesList" style="list-style:none;padding:0;margin-top:5px;max-height:200px;overflow:auto;"></ul>
 </div>
@@ -379,8 +378,10 @@ function searchPlaces() {
         el.onclick = () => {
           const pos = new kakao.maps.LatLng(place.y, place.x);
           map.setLevel(3);
-           map.panTo(pos);
-if (searchMarker) searchMarker.setMap(null);
+          map.panTo(pos);
+
+          // 마커 표시
+          if (searchMarker) searchMarker.setMap(null);
           searchMarker = new kakao.maps.Marker({
             position: pos,
             image: new kakao.maps.MarkerImage(
@@ -389,13 +390,17 @@ if (searchMarker) searchMarker.setMap(null);
               { offset: new kakao.maps.Point(16, 32) }
             )
           });
-          searchMarker.setMap(map);  // 키보드 내리기: 입력창 포커스 해제
+          searchMarker.setMap(map);
+
+          // 목록 닫기
+          listEl.innerHTML = '';
+
+          // 포커스 해제 및 화면 복원
           const input = document.getElementById('keyword');
-          input.blur();   // 모바일 화면 복원
+          input.blur();
           setTimeout(() => {
-          window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); // iOS에 강제 적용
-          document.body.scrollTop = 0;
-          map.relayout();  // 지도 재정렬
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+            map.relayout();
           }, 300);
         };
         listEl.appendChild(el);
