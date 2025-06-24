@@ -237,7 +237,8 @@ let map;
                   content: `<div class="remediation-label">${props.adress}</div>`,
                   yAnchor: 0.5
                   });
-                  labelOverlay.setMap(map);
+                  console.log("라벨 지도에 추가됨:", props.address);
+labelOverlay.setMap(map);
                   poly._labelOverlay = labelOverlay;  // 폴리곤 객체에 참조 저장
                   }
                 objs.push(poly);
