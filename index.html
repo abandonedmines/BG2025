@@ -215,7 +215,8 @@ let map;
 
           if (gtype === 'Polygon' || gtype === 'MultiPolygon') {
             const polys = gtype === 'Polygon' ? [coordinates] : coordinates;
-            polys.forEach(polygon => {
+            console.log("폴리곤 개수:", polys.length);
+polys.forEach(polygon => {
               polygon.forEach(ring => {
                 const path = ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
                 const style = getPolygonStyle(type);
