@@ -230,7 +230,7 @@ let map;
                 });
                 poly.setMap(map);
                   // 주소 텍스트 라벨 추가 (줌레벨 제한)
-                  if (type === 'remediation' && props.address) {
+                  if (type === 'remediation' && props.adress) {
                   const bounds = poly.getBounds();
                   const center = bounds.getCenter();
                   const labelOverlay = new kakao.maps.CustomOverlay({
