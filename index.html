@@ -217,18 +217,21 @@ let map;
           if (gtype === 'Polygon' || gtype === 'MultiPolygon') {
             const polys = gtype === 'Polygon' ? [coordinates] : coordinates;
             polys.forEach(polygon => {
-              polygon.forEach(ring => {
-                const path = ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
-                const style = getPolygonStyle(type);
-                const poly = new kakao.maps.Polygon({
-                  path,
-                  strokeWeight: style.strokeWeight,
-                  strokeColor: style.strokeColor,
-                  strokeStyle: style.strokeStyle,
-                  fillColor: style.fillColor,
-                  fillOpacity: style.fillOpacity
-                });
-                poly.setMap(map);
+              
+const path = polygon.map(ring =>
+  ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng))
+);
+const style = getPolygonStyle(type);
+const poly = new kakao.maps.Polygon({
+  path,
+  strokeWeight: style.strokeWeight,
+  strokeColor: style.strokeColor,
+  strokeStyle: style.strokeStyle,
+  fillColor: style.fillColor,
+  fillOpacity: style.fillOpacity
+});
+poly.setMap(map);
+
                   // 주소 텍스트 라벨 추가 (줌레벨 제한)
                   if (type === 'remediation' && props.address) {
                   const bounds = poly.getBounds();
