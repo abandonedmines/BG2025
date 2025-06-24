@@ -2,8 +2,8 @@
 
 <html lang="ko">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<meta charset="utf-8">
 <title>2025년 부국광산 현장정보 공유시스템</title>
 <style>
     html, body { margin: 0; padding: 0; height: 100%; }
@@ -95,14 +95,25 @@
       justify-content: space-between;
       align-items: center;
     }
-  </style>
+  
+    .remediation-label {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #5A00B2;
+      border-radius: 4px;
+      padding: 3px 6px;
+      font-size: 13px;
+      font-weight: bold;
+      color: #5A00B2;
+      box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+      white-space: nowrap;
+    }
+    </style>
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=1def3718266470b4160cc436f574139a&amp;autoload=false"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
 <link href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css" rel="stylesheet"/>
-<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=1def3718266470b4160cc436f574139a&amp;libraries=services"></script></head>
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=1def3718266470b4160cc436f574139a&amp;libraries=services"></script></meta></head>
 <body>
-
 <div id="searchContainer" style="position:absolute;top:10px;left:10px;z-index:200;background:white;padding:8px;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
 <input id="keyword" placeholder="주소 검색" style="font-size:16px;width:140px;padding:4px;" type="text"/>
 <button onclick="searchPlaces()" style="padding:4px;">검색</button>
@@ -204,22 +215,37 @@ let map;
 
           if (gtype === 'Polygon' || gtype === 'MultiPolygon') {
             const polys = gtype === 'Polygon' ? [coordinates] : coordinates;
+            
             polys.forEach(polygon => {
-              polygon.forEach(ring => {
-                const path = ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
-                const style = getPolygonStyle(type);
-                const poly = new kakao.maps.Polygon({
-                  path,
-                  strokeWeight: style.strokeWeight,
-                  strokeColor: style.strokeColor,
-                  strokeStyle: style.strokeStyle,
-                  fillColor: style.fillColor,
-                  fillOpacity: style.fillOpacity
-                });
-                poly.setMap(map);
-                objs.push(poly);
+              const path = polygon.map(ring =>
+                ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng))
+              );
+              const style = getPolygonStyle(type);
+              const poly = new kakao.maps.Polygon({
+                path,
+                strokeWeight: style.strokeWeight,
+                strokeColor: style.strokeColor,
+                strokeStyle: style.strokeStyle,
+                fillColor: style.fillColor,
+                fillOpacity: style.fillOpacity
               });
+              poly.setMap(map);
+              objs.push(poly);
+
+              // address 중심 라벨 (줌레벨 3 이하에서만 표시)
+              if (type === 'remediation' && props.address) {
+                const bounds = poly.getBounds();
+                const center = bounds.getCenter();
+                const labelOverlay = new kakao.maps.CustomOverlay({
+                  position: center,
+                  content: `<div class="remediation-label">${props.address}</div>`,
+                  yAnchor: 0.5
+                });
+                labelOverlay.setMap(map);
+                poly._labelOverlay = labelOverlay;
+              }
             });
+    
           } else if (gtype === 'LineString' || gtype === 'MultiLineString') {
             const lines = gtype === 'LineString' ? [coordinates] : coordinates;
             lines.forEach(line => {
