@@ -213,39 +213,20 @@ let map;
           const { type: gtype, coordinates } = f.geometry;
           const props = f.properties || {};
 
-          
           if (gtype === 'Polygon' || gtype === 'MultiPolygon') {
-            const polys = gtype === 'Polygon' ? [[coordinates]] : coordinates;
+            const polys = gtype === 'Polygon' ? [coordinates] : coordinates;
             polys.forEach(polygon => {
-              const path = polygon.map(ring =>
-                ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng))
-              );
-              const style = getPolygonStyle(type);
-              const poly = new kakao.maps.Polygon({
-                path,
-                strokeWeight: style.strokeWeight,
-                strokeColor: style.strokeColor,
-                strokeStyle: style.strokeStyle,
-                fillColor: style.fillColor,
-                fillOpacity: style.fillOpacity
-              });
-              poly.setMap(map);
-              objs.push(poly);
-
-              if (type === 'remediation' && props.address) {
-                const bounds = poly.getBounds();
-                const center = bounds.getCenter();
-                const labelOverlay = new kakao.maps.CustomOverlay({
-                  position: center,
-                  content: `<div class="remediation-label">${props.address}</div>`,
-                  yAnchor: 0.5
+              polygon.forEach(ring => {
+                const path = ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
+                const style = getPolygonStyle(type);
+                const poly = new kakao.maps.Polygon({
+                  path,
+                  strokeWeight: style.strokeWeight,
+                  strokeColor: style.strokeColor,
+                  strokeStyle: style.strokeStyle,
+                  fillColor: style.fillColor,
+                  fillOpacity: style.fillOpacity
                 });
-                if (map.getLevel() <= 3) labelOverlay.setMap(map);
-                poly._labelOverlay = labelOverlay;
-              }
-            });
-          }
-    );
                 poly.setMap(map);
                   // 주소 텍스트 라벨 추가 (줌레벨 제한)
                   if (type === 'remediation' && props.adress) {
