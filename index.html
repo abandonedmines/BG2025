@@ -95,6 +95,18 @@
       justify-content: space-between;
       align-items: center;
     }
+    .remediation-label {
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid #888;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 13px;
+      font-weight: bold;
+      color: #5A00B2;
+      box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+      white-space: nowrap;
+    }
+
   </style>
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=1def3718266470b4160cc436f574139a&amp;autoload=false"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -163,8 +175,8 @@ let map;
       }
 
       function setLayerVisibility(type, visible) {
-        if (!layerObjects[type]) return;
-        layerObjects[type].forEach(obj => {
+        if (!layerObjects[layerType]) return;
+        layerObjects[layerType].forEach(obj => {
           if (obj.setMap) obj.setMap(visible ? map : null);
         });
       }
@@ -180,10 +192,10 @@ let map;
       function drawLayerControl() {
         const $list = $('#layerList').empty();
         layerOrder.forEach(type => {
-          const li = $(`<li data-layer="${layerType}"><span>${layerData[type].name}</span><input type="checkbox" checked /></li>`);
-          li.find('input').prop('checked', layerData[type].visible);
+          const li = $(`<li data-layer="${type}"><span>${layerData[layerType].name}</span><input type="checkbox" checked /></li>`);
+          li.find('input').prop('checked', layerData[layerType].visible);
           li.find('input').on('change', function () {
-            layerData[type].visible = this.checked;
+            layerData[layerType].visible = this.checked;
             setLayerVisibility(type, this.checked);
           });
           $list.append(li);
@@ -216,6 +228,18 @@ let map;
                   fillOpacity: style.fillOpacity
                 });
                 poly.setMap(map);
+                  // 주소 텍스트 라벨 추가 (줌레벨 제한)
+                  if (type === 'remediation' && props.adress) {
+                  const bounds = poly.getBounds();
+                  const center = bounds.getCenter();
+                  const labelOverlay = new kakao.maps.CustomOverlay({
+                  position: center,
+                  content: `<div class="remediation-label">${props.adress}</div>`,
+                  yAnchor: 0.5
+                  });
+                  labelOverlay.setMap(map);
+                  poly._labelOverlay = labelOverlay;  // 폴리곤 객체에 참조 저장
+                  }
                 objs.push(poly);
               });
             });
@@ -236,7 +260,7 @@ let map;
           } else if (gtype === 'Point') {
             const [lng, lat] = coordinates;
             const pointPos = new kakao.maps.LatLng(lat, lng);
-            const markerImageInfo = markerIcons[type];
+            const markerImageInfo = markerIcons[layerType];
             const marker = new kakao.maps.Marker({
               position: pointPos,
               image: markerImageInfo ? new kakao.maps.MarkerImage(markerImageInfo.url, markerImageInfo.size, { offset: markerImageInfo.offset }) : undefined
@@ -288,6 +312,12 @@ let map;
       kakao.maps.event.addListener(map, 'zoom_changed', function () {
         openInfoWindows.forEach(iw => iw.close());
         openInfoWindows.length = 0;
+        const currentLevel = map.getLevel();
+          layerObjects['remediation']?.forEach(obj => {
+          if (obj._labelOverlay) {
+          obj._labelOverlay.setMap(currentLevel <= 4 ? map : null);
+          }
+          });
       });
       kakao.maps.event.addListener(map, 'click', function () {
         openInfoWindows.forEach(iw => iw.close());
