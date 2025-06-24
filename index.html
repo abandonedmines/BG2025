@@ -230,12 +230,12 @@ let map;
                 });
                 poly.setMap(map);
                   // 주소 텍스트 라벨 추가 (줌레벨 제한)
-                  if (type === 'remediation' && props.adress) {
+                  if (type === 'remediation' && props.address) {
                   const bounds = poly.getBounds();
                   const center = bounds.getCenter();
                   const labelOverlay = new kakao.maps.CustomOverlay({
                   position: center,
-                  content: `<div class="remediation-label">${props.adress}</div>`,
+                  content: `<div class="remediation-label">${props.address}</div>`,
                   yAnchor: 0.5
                   });
                   labelOverlay.setMap(map);
