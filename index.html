@@ -95,19 +95,19 @@
       justify-content: space-between;
       align-items: center;
     }
-  
     .remediation-label {
-      background: rgba(255, 255, 255, 0.9);
-      border: 1px solid #5A00B2;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid #888;
       border-radius: 4px;
-      padding: 3px 6px;
+      padding: 2px 6px;
       font-size: 13px;
       font-weight: bold;
       color: #5A00B2;
       box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
       white-space: nowrap;
     }
-    </style>
+
+  </style>
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=1def3718266470b4160cc436f574139a&amp;autoload=false"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
@@ -213,9 +213,9 @@ let map;
           const { type: gtype, coordinates } = f.geometry;
           const props = f.properties || {};
 
+          
           if (gtype === 'Polygon' || gtype === 'MultiPolygon') {
-            const polys = gtype === 'Polygon' ? [coordinates] : coordinates;
-            
+            const polys = gtype === 'Polygon' ? [[coordinates]] : coordinates;
             polys.forEach(polygon => {
               const path = polygon.map(ring =>
                 ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng))
@@ -232,7 +232,6 @@ let map;
               poly.setMap(map);
               objs.push(poly);
 
-              // address 중심 라벨 (줌레벨 3 이하에서만 표시)
               if (type === 'remediation' && props.address) {
                 const bounds = poly.getBounds();
                 const center = bounds.getCenter();
@@ -241,11 +240,28 @@ let map;
                   content: `<div class="remediation-label">${props.address}</div>`,
                   yAnchor: 0.5
                 });
-                labelOverlay.setMap(map);
+                if (map.getLevel() <= 3) labelOverlay.setMap(map);
                 poly._labelOverlay = labelOverlay;
               }
             });
-    
+          }
+    );
+                poly.setMap(map);
+                  // 주소 텍스트 라벨 추가 (줌레벨 제한)
+                  if (type === 'remediation' && props.adress) {
+                  const bounds = poly.getBounds();
+                  const center = bounds.getCenter();
+                  const labelOverlay = new kakao.maps.CustomOverlay({
+                  position: center,
+                  content: `<div class="remediation-label">${props.adress}</div>`,
+                  yAnchor: 0.5
+                  });
+                  labelOverlay.setMap(map);
+                  poly._labelOverlay = labelOverlay;  // 폴리곤 객체에 참조 저장
+                  }
+                objs.push(poly);
+              });
+            });
           } else if (gtype === 'LineString' || gtype === 'MultiLineString') {
             const lines = gtype === 'LineString' ? [coordinates] : coordinates;
             lines.forEach(line => {
@@ -315,6 +331,12 @@ let map;
       kakao.maps.event.addListener(map, 'zoom_changed', function () {
         openInfoWindows.forEach(iw => iw.close());
         openInfoWindows.length = 0;
+        const currentLevel = map.getLevel();
+          layerObjects['remediation']?.forEach(obj => {
+          if (obj._labelOverlay) {
+          obj._labelOverlay.setMap(currentLevel <= 4 ? map : null);
+          }
+          });
       });
       kakao.maps.event.addListener(map, 'click', function () {
         openInfoWindows.forEach(iw => iw.close());
