@@ -210,6 +210,8 @@ let map;
       function drawGeoJSON(geojson, type) {
         const objs = [];
         geojson.features.forEach(f => {
+  console.log('피처 geometry type:', f.geometry?.type);
+  console.log('피처 address 속성:', f.properties?.address);
           const { type: gtype, coordinates } = f.geometry;
           const props = f.properties || {};
 
