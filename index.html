@@ -95,18 +95,6 @@
       justify-content: space-between;
       align-items: center;
     }
-    .remediation-label {
-      background: rgba(255, 255, 255, 0.8);
-      border: 1px solid #888;
-      border-radius: 4px;
-      padding: 2px 6px;
-      font-size: 13px;
-      font-weight: bold;
-      color: #5A00B2;
-      box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
-      white-space: nowrap;
-    }
-
   </style>
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=1def3718266470b4160cc436f574139a&amp;autoload=false"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -185,14 +173,14 @@ let map;
         const zIndexStart = 100;
         [...$('#layerList li')].reverse().forEach((li, i) => {
           const type = $(li).data('layer');
-          layerObjects[type]?.forEach(obj => obj.setZIndex?.(zIndexStart + i));
+          layerObjects[layerType]?.forEach(obj => obj.setZIndex?.(zIndexStart + i));
         });
       }
 
       function drawLayerControl() {
         const $list = $('#layerList').empty();
         layerOrder.forEach(type => {
-          const li = $(`<li data-layer="${type}"><span>${layerData[type].name}</span><input type="checkbox" checked /></li>`);
+          const li = $(`<li data-layer="${layerType}"><span>${layerData[type].name}</span><input type="checkbox" checked /></li>`);
           li.find('input').prop('checked', layerData[type].visible);
           li.find('input').on('change', function () {
             layerData[type].visible = this.checked;
@@ -207,7 +195,7 @@ let map;
         }});
       }
 
-      function drawGeoJSON(geojson, type) {
+      function drawGeoJSON(geojson, layerType) {
         const objs = [];
         geojson.features.forEach(f => {
           const { type: gtype, coordinates } = f.geometry;
@@ -218,7 +206,7 @@ let map;
             polys.forEach(polygon => {
               polygon.forEach(ring => {
                 const path = ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
-                const style = getPolygonStyle(type);
+                const style = getPolygonStyle(layerType);
                 const poly = new kakao.maps.Polygon({
                   path,
                   strokeWeight: style.strokeWeight,
@@ -228,19 +216,6 @@ let map;
                   fillOpacity: style.fillOpacity
                 });
                 poly.setMap(map);
-                  // 주소 텍스트 라벨 추가 (줌레벨 제한)
-                  if (type === 'remediation' && props.adress) {
-                  const bounds = poly.getBounds();
-                  const center = bounds.getCenter();
-                  const labelOverlay = new kakao.maps.CustomOverlay({
-                  position: center,
-                  content: `<div class="remediation-label">${props.adress}</div>`,
-                  yAnchor: 0.5
-                  });
-                  console.log("라벨 지도에 추가됨:", props.address);
-labelOverlay.setMap(map);
-                  poly._labelOverlay = labelOverlay;  // 폴리곤 객체에 참조 저장
-                  }
                 objs.push(poly);
               });
             });
@@ -248,7 +223,7 @@ labelOverlay.setMap(map);
             const lines = gtype === 'LineString' ? [coordinates] : coordinates;
             lines.forEach(line => {
               const path = line.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
-              const style = getLineStyle(type);
+              const style = getLineStyle(layerType);
               const polyline = new kakao.maps.Polyline({
                 path,
                 strokeWeight: style.strokeWeight,
@@ -294,7 +269,7 @@ labelOverlay.setMap(map);
         return objs;
       }
 
-      function getPolygonStyle(type) {
+      function getPolygonStyle(layerType) {
        if (type === 'boundary') {
        return { strokeWeight: 2.5, strokeColor: '#FFFF00', strokeStyle: 'dash', fillColor: 'rgba(0,0,0,0)', fillOpacity: 0 };
        } 
@@ -305,7 +280,7 @@ labelOverlay.setMap(map);
        }
       }
 
-      function getLineStyle(type) {
+      function getLineStyle(layerType) {
         if (type === 'mainflow') return { strokeWeight: 2, strokeColor: '#0775FC', strokeOpacity: 0.8 };
         return { strokeWeight: 2, strokeColor: '#444', strokeOpacity: 0.5 };
       }
@@ -313,12 +288,6 @@ labelOverlay.setMap(map);
       kakao.maps.event.addListener(map, 'zoom_changed', function () {
         openInfoWindows.forEach(iw => iw.close());
         openInfoWindows.length = 0;
-        const currentLevel = map.getLevel();
-          layerObjects['remediation']?.forEach(obj => {
-          if (obj._labelOverlay) {
-          obj._labelOverlay.setMap(currentLevel <= 4 ? map : null);
-          }
-          });
       });
       kakao.maps.event.addListener(map, 'click', function () {
         openInfoWindows.forEach(iw => iw.close());
