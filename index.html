@@ -316,7 +316,7 @@ let map;
         const currentLevel = map.getLevel();
           layerObjects['remediation']?.forEach(obj => {
           if (obj._labelOverlay) {
-          obj._labelOverlay.setMap(currentLevel <= 4 ? map : null);
+          obj._labelOverlay.setMap(map);
           }
           });
       });
