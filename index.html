@@ -2,8 +2,8 @@
 
 <html lang="ko">
 <head>
-<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
-<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta charset="utf-8"/>
 <title>2025년 부국광산 현장정보 공유시스템</title>
 <style>
     html, body { margin: 0; padding: 0; height: 100%; }
@@ -95,25 +95,14 @@
       justify-content: space-between;
       align-items: center;
     }
-    .remediation-label {
-      background: rgba(255, 255, 255, 0.8);
-      border: 1px solid #888;
-      border-radius: 4px;
-      padding: 2px 6px;
-      font-size: 13px;
-      font-weight: bold;
-      color: #5A00B2;
-      box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
-      white-space: nowrap;
-    }
-
   </style>
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9e36db09e57011893c10d8a46f344a7f&amp;autoload=false"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
 <link href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css" rel="stylesheet"/>
-<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9e36db09e57011893c10d8a46f344a7f&amp;libraries=services"></script></meta></head>
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9e36db09e57011893c10d8a46f344a7f&amp;libraries=services"></script></head>
 <body>
+
 <div id="searchContainer" style="position:absolute;top:10px;left:10px;z-index:200;background:white;padding:8px;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
 <input id="keyword" placeholder="주소 검색" style="font-size:16px;width:140px;padding:4px;" type="text"/>
 <button onclick="searchPlaces()" style="padding:4px;">검색</button>
@@ -175,8 +164,8 @@ let map;
       }
 
       function setLayerVisibility(type, visible) {
-        if (!layerObjects[layerType]) return;
-        layerObjects[layerType].forEach(obj => {
+        if (!layerObjects[type]) return;
+        layerObjects[type].forEach(obj => {
           if (obj.setMap) obj.setMap(visible ? map : null);
         });
       }
@@ -185,17 +174,17 @@ let map;
         const zIndexStart = 100;
         [...$('#layerList li')].reverse().forEach((li, i) => {
           const type = $(li).data('layer');
-          layerObjects[layerType]?.forEach(obj => obj.setZIndex?.(zIndexStart + i));
+          layerObjects[type]?.forEach(obj => obj.setZIndex?.(zIndexStart + i));
         });
       }
 
       function drawLayerControl() {
         const $list = $('#layerList').empty();
         layerOrder.forEach(type => {
-          const li = $(`<li data-layer="${type}"><span>${layerData[layerType].name}</span><input type="checkbox" checked /></li>`);
-          li.find('input').prop('checked', layerData[layerType].visible);
+          const li = $(`<li data-layer="${type}"><span>${layerData[type].name}</span><input type="checkbox" checked /></li>`);
+          li.find('input').prop('checked', layerData[type].visible);
           li.find('input').on('change', function () {
-            layerData[layerType].visible = this.checked;
+            layerData[type].visible = this.checked;
             setLayerVisibility(type, this.checked);
           });
           $list.append(li);
@@ -207,7 +196,7 @@ let map;
         }});
       }
 
-      function drawGeoJSON(geojson, layerType) {
+      function drawGeoJSON(geojson, type) {
         const objs = [];
         geojson.features.forEach(f => {
           const { type: gtype, coordinates } = f.geometry;
@@ -218,7 +207,7 @@ let map;
             polys.forEach(polygon => {
               polygon.forEach(ring => {
                 const path = ring.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
-                const style = getPolygonStyle(layerType);
+                const style = getPolygonStyle(type);
                 const poly = new kakao.maps.Polygon({
                   path,
                   strokeWeight: style.strokeWeight,
@@ -228,18 +217,6 @@ let map;
                   fillOpacity: style.fillOpacity
                 });
                 poly.setMap(map);
-                  // 주소 텍스트 라벨 추가 (줌레벨 제한)
-                  if (type === 'remediation' && props.adress) {
-                  const bounds = poly.getBounds();
-                  const center = bounds.getCenter();
-                  const labelOverlay = new kakao.maps.CustomOverlay({
-                  position: center,
-                  content: `<div class="remediation-label">${props.adress}</div>`,
-                  yAnchor: 0.5
-                  });
-                  labelOverlay.setMap(map);
-                  poly._labelOverlay = labelOverlay;  // 폴리곤 객체에 참조 저장
-                  }
                 objs.push(poly);
               });
             });
@@ -247,7 +224,7 @@ let map;
             const lines = gtype === 'LineString' ? [coordinates] : coordinates;
             lines.forEach(line => {
               const path = line.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
-              const style = getLineStyle(layerType);
+              const style = getLineStyle(type);
               const polyline = new kakao.maps.Polyline({
                 path,
                 strokeWeight: style.strokeWeight,
@@ -260,7 +237,7 @@ let map;
           } else if (gtype === 'Point') {
             const [lng, lat] = coordinates;
             const pointPos = new kakao.maps.LatLng(lat, lng);
-            const markerImageInfo = markerIcons[layerType];
+            const markerImageInfo = markerIcons[type];
             const marker = new kakao.maps.Marker({
               position: pointPos,
               image: markerImageInfo ? new kakao.maps.MarkerImage(markerImageInfo.url, markerImageInfo.size, { offset: markerImageInfo.offset }) : undefined
@@ -293,7 +270,7 @@ let map;
         return objs;
       }
 
-      function getPolygonStyle(layerType) {
+      function getPolygonStyle(type) {
        if (type === 'boundary') {
        return { strokeWeight: 2.5, strokeColor: '#FFFF00', strokeStyle: 'dash', fillColor: 'rgba(0,0,0,0)', fillOpacity: 0 };
        } 
@@ -304,7 +281,7 @@ let map;
        }
       }
 
-      function getLineStyle(layerType) {
+      function getLineStyle(type) {
         if (type === 'mainflow') return { strokeWeight: 2, strokeColor: '#0775FC', strokeOpacity: 0.8 };
         return { strokeWeight: 2, strokeColor: '#444', strokeOpacity: 0.5 };
       }
@@ -312,12 +289,6 @@ let map;
       kakao.maps.event.addListener(map, 'zoom_changed', function () {
         openInfoWindows.forEach(iw => iw.close());
         openInfoWindows.length = 0;
-        const currentLevel = map.getLevel();
-          layerObjects['remediation']?.forEach(obj => {
-          if (obj._labelOverlay) {
-          obj._labelOverlay.setMap(currentLevel <= 4 ? map : null);
-          }
-          });
       });
       kakao.maps.event.addListener(map, 'click', function () {
         openInfoWindows.forEach(iw => iw.close());
