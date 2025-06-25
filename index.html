@@ -133,7 +133,7 @@ let map;
         samplingf2: { file: 'BG_Fsamplingsite2.geojson', name: '2차임야채취구역', visible: true }  
       };
 
-      const layerOrder = ['adits', 'sampling', 'remediation', 'mainflow', 'boundary'];
+      const layerOrder = ['adits', 'sampling', 'samplingf2', 'remediation', 'mainflow', 'boundary'];
       const layerObjects = {};
 
       const markerIcons = {
@@ -277,6 +277,9 @@ let map;
        } 
        else if (type === 'remediation') {
        return { strokeWeight: 2.5, strokeColor: '#7601F3', strokeStyle: 'solid', fillColor: '#A016FC', fillOpacity: 0.3 };
+       } 
+       else if (type === 'samplingf2') {
+       return { strokeWeight: 2.5, strokeColor: '#fb9e08', strokeStyle: 'solid', fillColor: '#fcec11', fillOpacity: 0.3 };
        } 
        else { return { strokeWeight: 2, strokeColor: '#333', strokeStyle: 'solid', fillColor: '#ccc', fillOpacity: 0.3 };
        }
